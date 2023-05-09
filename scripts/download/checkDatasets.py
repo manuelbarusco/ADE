@@ -14,12 +14,13 @@ import pathlib
 import re
 import magic
 
+SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
+
 '''
 @param datasets_directory path of directory where are all the datasets
 @param error_log_fil_path path of the error log file
-@param suffixes array of accettable suffixes
 '''
-def startCheck(datasets_directory, error_log_file_path, suffixes):
+def startCheck(datasets_directory, error_log_file_path):
     
     #open the error log files
     f_log=open(error_log_file_path, "a")
@@ -58,7 +59,7 @@ def startCheck(datasets_directory, error_log_file_path, suffixes):
                 file_suffix = pathlib.Path(path).suffix
 
                 #log files that have not a valid RDF extension or empty extension
-                if (file_suffix not in suffixes):
+                if (file_suffix not in SUFFIXES):
 
                     #recover a possible file type
                     file_type = magic.from_file(path)
@@ -84,9 +85,7 @@ def main():
     
     error_log_file_path = os.path.join(scriptDir, 'logs/checker_error_log.txt')                        #path to the error log file
 
-    suffixes = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples"]
-
-    startCheck(datasets_directory, error_log_file_path, suffixes)
+    startCheck(datasets_directory, error_log_file_path)
 
 if __name__ == "__main__" :
     main()
