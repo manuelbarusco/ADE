@@ -90,7 +90,7 @@ def download(url, dataset_id, dataset_directory_path, download_retry_log):
         #close the  downloaded file
         f.close()
         success = True
-        download_retry_log.write("Recovered download in dataset: "+dataset_id+"\nURL: "+url+"\nError: "+str(e)+"\n")
+        download_retry_log.write("Recovered download in dataset: "+dataset_id+"\nURL: "+url+"\n")
 
     except (requests.ConnectionError,requests.HTTPError,requests.exceptions.RequestException) as e:
         print("Dataset: "+dataset_id+"\nURL: "+url+"\nError: "+str(e)+"\n")
@@ -111,8 +111,11 @@ def download(url, dataset_id, dataset_directory_path, download_retry_log):
     if success:
 
         #update the dataset.json file
-        dataset_json_file=open(dataset_directory_path+"/dataset_metadata.json", "r+", encoding="utf-8")
+        dataset_json_file=open(dataset_directory_path+"/dataset_metadata.json", "r", encoding="utf-8")
         dataset_json = json.load(dataset_json_file,strict=False)
+        dataset_json_file.close()
+
+        dataset_json_file=open(dataset_directory_path+"/dataset_metadata.json", "w", encoding="utf-8")
 
         dataset_json["download_info"]["downloaded"] += 1
 
@@ -129,10 +132,11 @@ def download(url, dataset_id, dataset_directory_path, download_retry_log):
 def main():
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
     
-    datasets_folder_path = "/media/manuel/500GBHDD/Tesi/Datasets"                              #path to the folder that contains the datasets
-    
-    error_log_file_path = os.path.join(scriptDir, '../Log/downloader_error_log.txt')           #path to the downloader error log file
-    download_retry_log_path = os.path.join(scriptDir, '../Log/retry_download_log.txt')             #path to the dowloader retry error log file
+    #datasets_folder_path = "/media/manuel/500GBHDD/Tesi/Datasets"                              #path to the folder that contains the datasets
+    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets"                              #path to the folder that contains the datasets
+
+    error_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log.txt')             #path to the downloader error log file
+    download_retry_log_path = os.path.join(scriptDir, 'logs/retry_download_log.txt')           #path to the dowloader retry error log file
 
     retryDownloads(datasets_folder_path, error_log_file_path, download_retry_log_path);
 

@@ -94,11 +94,6 @@ def createDatasetMetadataJSONObject(dataset):
     #set the mined false for future mining
     dataset_json["mined"]=False
 
-    #clean the dataset.json file from control charachters
-    for key, value in dataset_json.items():
-        value = re.sub("\\n|\\r|  +", ' ', str(value))
-        dataset_json[key] = value
-
     return dataset_json 
 
 '''
@@ -136,8 +131,6 @@ This function will download one dataset file
 '''
 def download(urls, dataset_id, dataset_directory_path, dataset_json, f_log):
 
-    url_i = 0 
-
     downloaded_files = 0 
 
     for url in urls: 
@@ -165,7 +158,7 @@ def download(urls, dataset_id, dataset_directory_path, dataset_json, f_log):
 
                 #check for empty string and assign a default name
                 if filename == "":
-                    filename = "file_url_"+str(url_i); 
+                    filename = "file_url_"+str(downloaded_files); 
 
             #download the dataset
             chunkSize = 1024
@@ -208,11 +201,13 @@ def main():
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
     datasets_json_path = "/home/manuel/Tesi/ACORDAR/Data/datasets.json"                          #path to the datasets list json file
-    datasets_folder_path = "/media/manuel/500GBHDD/Tesi/Datasets"                                #path to the folder that contains the datasets
+    #datasets_folder_path = "/media/manuel/500GBHDD/Tesi/Datasets"                                #path to the folder that contains the datasets
 
-    error_log_file_path = os.path.join(scriptDir, '../Log/downloader_error_log.txt')             #path to the error log file
+    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                #path to the folder that contains the datasets
 
-    resume_row = 0
+    error_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log.txt')               #path to the error log file
+
+    resume_row = 1
 
     readAndDownload(datasets_json_path, datasets_folder_path, error_log_file_path, resume_row)
 

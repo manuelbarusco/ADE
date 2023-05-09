@@ -19,10 +19,10 @@ import magic
 @param error_log_fil_path path of the error log file
 @param suffixes array of accettable suffixes
 '''
-def startCheck(datasets_directory, error_log_fil_path, suffixes):
+def startCheck(datasets_directory, error_log_file_path, suffixes):
     
     #open the error log files
-    f_log=open(error_log_fil_path, "a")
+    f_log=open(error_log_file_path, "a")
 
     index = 0
     dataset_name = "dataset-0"
@@ -57,6 +57,7 @@ def startCheck(datasets_directory, error_log_fil_path, suffixes):
 
                 file_suffix = pathlib.Path(path).suffix
 
+                #log files that have not a valid RDF extension or empty extension
                 if (file_suffix not in suffixes):
 
                     #recover a possible file type
@@ -78,10 +79,10 @@ def main():
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory = "/home/manuel/Tesi/ACORDAR/Test"                   
+    datasets_directory = "/home/manuel/Tesi/ACORDAR/Datasets"                   
     #datasets_directory = "/media/manuel/500GBHDD/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
     
-    error_log_file_path = os.path.join(scriptDir, '../Log/downloader_error_log.txt')                   #path to the error log file
+    error_log_file_path = os.path.join(scriptDir, 'logs/checker_error_log.txt')                   #path to the error log file
 
     suffixes = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples"]
 
