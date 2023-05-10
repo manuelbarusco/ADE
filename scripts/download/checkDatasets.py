@@ -80,8 +80,8 @@ def main():
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory = "/home/manuel/Tesi/ACORDAR/Datasets"                   
-    #datasets_directory = "/media/manuel/500GBHDD/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
+    #datasets_directory = "/home/manuel/Tesi/ACORDAR/Datasets"                   
+    datasets_directory = "/media/manuel/500GBHDD/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
     
     error_log_file_path = os.path.join(scriptDir, 'logs/checker_error_log.txt')                        #path to the error log file
 

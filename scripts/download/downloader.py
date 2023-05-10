@@ -203,7 +203,7 @@ def main():
     datasets_json_path = "/home/manuel/Tesi/ACORDAR/Data/datasets.json"                          #path to the datasets list json file
     #datasets_folder_path = "/media/manuel/500GBHDD/Tesi/Datasets"                                #path to the folder that contains the datasets
 
-    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                #path to the folder that contains the datasets
+    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets-1"                                #path to the folder that contains the datasets
 
     error_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log.txt')               #path to the error log file
 
