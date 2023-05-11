@@ -1,6 +1,6 @@
 """
-Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes (reported in RDF_SUFFIXES).
-It appends extracted data in the `dataset_content.json` file that is contained inside every dataset folder.
+Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined from JENA
+
 """
 
 import pathlib
@@ -131,15 +131,19 @@ def mineFile(folder, file, dataset_content, f_log):
     return True
 
 '''
-@param folder of the dataset
+@param dataset to be considered
+@param file to be mined in the dataset
+@param dataset_directory_path path to the datasets directory
 @param f_log error log file
 '''
-def mineDataset(folder, f_log):
+def mineDataset(dataset, file, datasets_directory_path, f_log):
+
+    dataset_path = datasets_directory_path+"/"+dataset 
 
     dataset_content = {}
 
     #open the dataset metadata file
-    dataset_metadata_file = open(folder.path+"/dataset_metadata.json", "r", encoding="utf-8")
+    dataset_metadata_file = open(dataset_path+"/dataset_metadata.json", "r", encoding="utf-8")
     dataset_metadata = json.load(dataset_metadata_file, strict = False)
     dataset_metadata_file.close()
 
@@ -190,29 +194,45 @@ def main():
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory_path = "/media/manuel/500GBHDD/Tesi/Datasets"                            #path to the folder of the downloaded datasets
-    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                       #path to the folder of the downloaded datasets
-    error_log_file_path = os.path.join(scriptDir, 'logs/miner_error_log.txt')                    #path to the error log file
+    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
+    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                               #path to the folder of the downloaded datasets
+    error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')              #path to the error log file
+    jena_error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error_log.txt')           #path to the error log file of the jena miner
 
     logging.getLogger("rdflib").setLevel(logging.ERROR)
 
-    #open the error log file of the miner
-    f_log=open(error_log_file_path, "w+")
+    #open the error log file of the extractor
+    f_log=open(error_log_file_path, "a")
+
+    #open the error log file of the jena miner
+    f_log_jena=open(jena_error_log_file_path, "r")
+
+    datasets_files_errors = {}
 
     n_dataset = 0
-    total_dataset = len(os.listdir(datasets_directory_path))
-    skip_datasets = ["dataset-11580"]
 
-    pbar = tqdm(total = total_dataset)
+    while True:
+        line1 = f_log_jena.readline()
+    
+        if not line1:
+            break
 
-    for folder in os.scandir(datasets_directory_path):
+        line2 = f_log_jena.readline()
+        line3 = f_log_jena.readline()
+    
+        dataset = line1.split(": ")[1].strip("\n")
+        file = line2.split(": ")[1].strip("\n")
 
-        if folder not in skip_datasets:
-        
-            mineDataset(folder, f_log)
-            n_dataset+=1
+        if dataset in datasets_files_errors:
+            datasets_files_errors[dataset].append(file)
+        else:
+            datasets_files_errors[dataset] = list() 
+            datasets_files_errors[dataset].append(file)
+            n_dataset += 1
+                
+    print("Find: "+str(n_dataset)+" datasets with errors, starts mining ...")
 
-            pbar.update(1)
+    print(datasets_files_errors["dataset-13283"]) 
 
     f_log.close()
 
