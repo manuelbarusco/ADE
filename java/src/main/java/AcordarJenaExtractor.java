@@ -10,8 +10,10 @@ import java.util.LinkedList;
 
 public class AcordarJenaExtractor {
 
-    private File datasetsFolder;
-    private FileWriter logFile;
+    private File datasetsFolder;                                // folder where there are all the datasets
+    private FileWriter logFile;                                 // text file where to log all the errors
+
+    private static final int LIMIT_FILE_SIZE = 500;             // Limit size to a file that must be parse
 
     public static final HashSet<String> SUFFIXES= new HashSet<>(Arrays.asList("rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"));
 
@@ -28,7 +30,7 @@ public class AcordarJenaExtractor {
         if(!datasetsFolder.exists())
             throw new IllegalArgumentException("The datasets folder path provided does not exists");
 
-        logFile = new FileWriter(logFilePath);
+        logFile = new FileWriter(logFilePath, true);
 
     }
 
@@ -37,7 +39,9 @@ public class AcordarJenaExtractor {
      * @return true if the file has a valid RDF extension
      */
     private boolean isRDFFile(String fileName){
-        return SUFFIXES.contains(fileName.split("\\.")[1]);
+        if(fileName.contains("."))
+            return SUFFIXES.contains(fileName.split("\\.")[1]);
+        return false;
     }
 
     /**
@@ -51,23 +55,23 @@ public class AcordarJenaExtractor {
             Reader reader = new FileReader(path, StandardCharsets.UTF_8);
             json = JsonParser.parseReader(reader);
             reader.close();
-        } catch (Exception e) {
-            System.out.println("Error while opening the dataset.json file: "+e);
+        } catch (IOException e) {
+            System.out.println("Error while reading the dataset_metadata.json file: "+e);
         }
 
         //get the JsonObject to udpate
-        JsonObject object = json.getAsJsonObject();
+        JsonObject datasetMetadata = json.getAsJsonObject();
 
-        object.addProperty("mined_files_jena", minedFiles);
+        datasetMetadata.addProperty("mined_files_jena", minedFiles);
+        datasetMetadata.addProperty("mined_jena", true);
 
-        //write the json for updating the dataset_metadata.json file
-        FileWriter file;
-        try {
-            file = new FileWriter(path, StandardCharsets.UTF_8);
-            file.write(String.valueOf(object));
-            file.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        try{
+            FileWriter datasetMetadataFile=new FileWriter(path, StandardCharsets.UTF_8);
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(datasetMetadata, datasetMetadataFile);
+            datasetMetadataFile.close();
+        } catch (IOException e){
+            System.out.println("Error while updating the dataset_metadata.json file: "+e);
         }
     }
 
@@ -77,7 +81,7 @@ public class AcordarJenaExtractor {
      * @throws IOException if there are problem during the writing in the log file
      */
     public void mineDataset(File dataset) throws IOException {
-        System.out.println("Mining dataset: "+dataset);
+        //System.out.println("Mining dataset: "+dataset);
 
         HashMap<String, LinkedList<String>> data = new HashMap<>();
         data.put(StreamRDFParser.CustomTriple.CLASSES, new LinkedList<>());
@@ -92,9 +96,16 @@ public class AcordarJenaExtractor {
 
         for(File file: files){
 
-            if(isRDFFile(file.getName())) {
+            double fileSize = file.length() / (1024*1024);
 
-                System.out.println("Processing: "+dataset.getName()+" File: "+file.getName());
+            //check if the file is greater than the limit file size in MB
+            if (fileSize > LIMIT_FILE_SIZE) {
+                logFile.write("Dataset: " + dataset.getName() + "\nFile: " + file.getName() + "\nError: bigger than " + LIMIT_FILE_SIZE + " MB\n");
+                logFile.flush();
+            }
+
+            if(isRDFFile(file.getName()) && fileSize < LIMIT_FILE_SIZE) {
+                //System.out.println(file.getName());
 
                 try {
                     StreamRDFParser parser = new StreamRDFParser(file.getPath());
@@ -102,9 +113,17 @@ public class AcordarJenaExtractor {
                     while (parser.hasNext()) {
                         StreamRDFParser.CustomTriple triple = parser.next();
 
-                        data.get(triple.getSubject().getKey()).add(triple.getSubject().getValue());
+                        String subjectValue = triple.getSubject().getValue();
+                        String objectValue = triple.getObject().getValue();
+
                         data.get(StreamRDFParser.CustomTriple.PROPERTIES).add(triple.getPredicate());
-                        data.get(triple.getObject().getKey()).add(triple.getObject().getValue());
+
+                        //check for non-empty values in subject or object values
+                        if(!subjectValue.isBlank())
+                            data.get(triple.getSubject().getKey()).add(subjectValue);
+
+                        if(!objectValue.isBlank())
+                            data.get(triple.getObject().getKey()).add(objectValue);
 
                     }
 
@@ -126,7 +145,7 @@ public class AcordarJenaExtractor {
 
         //create the dataset_content_jena.json
         String datasetContentPath = dataset.getPath()+"/dataset_content_jena.json";
-        FileWriter datasetContent = new FileWriter(datasetContentPath, false);
+        FileWriter datasetContent = new FileWriter(datasetContentPath, StandardCharsets.UTF_8);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         gson.toJson(data, datasetContent);
         datasetContent.close();
@@ -136,7 +155,33 @@ public class AcordarJenaExtractor {
         updateJSONFIle(datasetMetadataPath, minedFiles);
     }
 
+    /**
+     * @param dataset File object relative to a dataset directory
+     * @return True if the dataset was already mined by Jena else False
+     */
+    private boolean isMined(File dataset){
 
+        //check the dataset_metadata.json file
+        String path = dataset.getPath()+"/dataset_metadata.json";
+
+        JsonElement json = null;
+        try {
+            Reader reader = new FileReader(path, StandardCharsets.UTF_8);
+            json = JsonParser.parseReader(reader);
+            reader.close();
+        } catch (IOException e) {
+            System.out.println("Error while reading the dataset_metadata.json file: "+e);
+        }
+
+        //get the JsonObject to udpate
+        JsonObject datasetMetadata = json.getAsJsonObject();
+
+        if(datasetMetadata.has("mined_jena"))
+            return datasetMetadata.get("mined_jena").getAsBoolean();
+        else
+            return false;
+
+    }
 
     /**
      * This method mines all the datasets
@@ -144,20 +189,27 @@ public class AcordarJenaExtractor {
     public void mineDatasets() throws IOException {
         File[] datasets = datasetsFolder.listFiles();
 
+        int nDatasets = 0;
+
         for(File dataset: datasets){
 
-            if(dataset.isDirectory())
+            if(dataset.isDirectory() /*&& !isMined(dataset)*/) {
                 mineDataset(dataset);
+                nDatasets++;
+                if(nDatasets % 1000 == 0)
+                    System.out.println("Mined: "+nDatasets+" datasets");
+            }
+
         }
 
+        logFile.close();
     }
 
-    /**
-     * @param args
-     */
+
     public static void main(String[] args) throws IOException {
-        String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
-        String logFilePath = "/home/manuel/Tesi/ACORDAR/Datasets/jena.txt";
+        String datasetsFolder = "/media/manuel/Tesi/Datasets";
+        //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
+        String logFilePath = "/home/manuel/Tesi/Codebase/ADE/logs/jena_miner_error_log.txt";
         AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath);
         e.mineDatasets();
 
