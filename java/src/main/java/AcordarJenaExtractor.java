@@ -11,6 +11,8 @@ import java.util.LinkedList;
 public class AcordarJenaExtractor {
 
     private File datasetsFolder;                                // folder where there are all the datasets
+    private String logFilePath;                                 // path to the error log file
+
     private FileWriter logFile;                                 // text file where to log all the errors
 
     private static final int LIMIT_FILE_SIZE = 500;             // Limit size to a file that must be parse
@@ -20,17 +22,19 @@ public class AcordarJenaExtractor {
     /** constructor
      * @param datasetsFolderPath path to the datasets folder
      * @param logFilePath path to the log file
-     * @throws IOException if there are problems
-     * @throws IOException if there are problems during the log file opening
      */
-    public AcordarJenaExtractor(String datasetsFolderPath, String logFilePath) throws IOException {
+    public AcordarJenaExtractor(String datasetsFolderPath, String logFilePath) {
         datasetsFolder = new File(datasetsFolderPath);
         if(!datasetsFolder.isDirectory())
             throw new IllegalArgumentException("The datasets folder path provided is not a directory path");
         if(!datasetsFolder.exists())
             throw new IllegalArgumentException("The datasets folder path provided does not exists");
 
-        logFile = new FileWriter(logFilePath, true);
+        File file = new File(logFilePath);
+        if(file.isDirectory())
+            throw new IllegalArgumentException("The error log file path provided points to a directory");
+
+        this.logFilePath = logFilePath;
 
     }
 
@@ -132,7 +136,9 @@ public class AcordarJenaExtractor {
 
                 } catch (Exception e) {
                     //remove from the exception message all the \n characters that can break the message
-                    String errorMessage = e.getMessage().replace("\n", " ");
+                    String errorMessage = e.getMessage();
+                    if(errorMessage!=null)
+                        errorMessage = errorMessage.replace("\n", " ");
                     logFile.write("Dataset: " + dataset.getName() + "\nFile: " + file.getName() + "\nError: " + errorMessage + "\n");
                     logFile.flush();
                 } catch (OutOfMemoryError e) {
@@ -185,15 +191,30 @@ public class AcordarJenaExtractor {
 
     /**
      * This method mines all the datasets
+     *
+     * @param resume boolean that indicates if the mine process has to be resumed or started from the beginning
+     * @throws IOException if there are problems when opening the error log file
      */
-    public void mineDatasets() throws IOException {
+    public void mineDatasets(boolean resume) throws IOException {
+
+        if(resume)
+            logFile = new FileWriter(logFilePath, true);
+        else
+            logFile = new FileWriter(logFilePath);
+
         File[] datasets = datasetsFolder.listFiles();
 
         int nDatasets = 0;
 
         for(File dataset: datasets){
 
-            if(dataset.isDirectory() /*&& !isMined(dataset)*/) {
+            boolean mined = false;
+
+            //if resume true check if the dataset was already mined, else mine the dataset even if was already mined
+            if (resume)
+                mined = isMined(dataset);
+
+            if(dataset.isDirectory() && !mined) {
                 mineDataset(dataset);
                 nDatasets++;
                 if(nDatasets % 1000 == 0)
@@ -211,7 +232,9 @@ public class AcordarJenaExtractor {
         //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
         String logFilePath = "/home/manuel/Tesi/Codebase/ADE/logs/jena_miner_error_log.txt";
         AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath);
-        e.mineDatasets();
+
+        boolean resume = false;
+        e.mineDatasets(resume);
 
     }
 }
