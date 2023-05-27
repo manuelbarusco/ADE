@@ -20,6 +20,10 @@ SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".
 @param dataset_content dictionary with the elements parsed until now
 '''
 def parse_as_XML(file_path: str, dataset_content: dict):
+    classes = dataset_content["classes"]
+    entities = dataset_content["entities"]
+    literals = dataset_content["literals"]
+    properties = dataset_content["properties"]
 
     parser = etree.XMLParser(recover=True)
 
@@ -32,64 +36,35 @@ def parse_as_XML(file_path: str, dataset_content: dict):
     
     for element in root.iter():
         #print("Tag:" + str(element.tag) + " Text:" + str(element.text))
-        
-        if "Description" in element.tag:
-            if len(element.attrib.keys()) > 0:
-                if "about" in element.attrib.keys()[0]:
-                    dataset_content["entities"].append(element.get(element.attrib.keys()[0]))
-        
-        elif "type" in element.tag:
-            if len(element.attrib.keys()) > 0:
-                if "resource" in element.attrib.keys()[0]:
-                    dataset_content["classes"].append(element.get(element.attrib.keys()[0]))
 
-        elif "}" in element.tag:
+        tag = element.tag.lower()
+        keys = (
+            [x.lower() for x in element.attrib.keys()[0]]
+            if len(element.attrib.keys()) > 0
+            else None
+        )
+
+        if "description" in tag:
+            if keys != None:
+                if "about" in keys:
+                    entities.append(element.get(keys))
+
+        elif "type" in tag:
+            if keys != None:
+                if "resource" in keys:
+                    classes.append(element.get(keys))
+
+        elif "}" in tag:
             split = element.tag.split("}")
-            property = split[1]
-            if property != "RDF" and property != "Description":
-                dataset_content["properties"].append(property)
+            property = split[1].lower()
+            if property != "rdf" and property != "description":
+                properties.append(property)
+
         else:
-            dataset_content["properties"].append(element.tag)
+            properties.append(element.tag)
 
         if element.text != None and element.text.strip():
-            dataset_content["literals"].append(element.text)
-
-
-'''
-@param element Element object parsable with lxml
-@param classes list of classes 
-@param entities list of entities
-@param properties list of properties
-@param literals list of literals
-'''
-def parseElement(element: object, classes: list, entities: list, properties: list, literals: list):
-
-    for key in element.keys():
-        if key=="@id":
-            entities.append(element[key])
-        elif key=="@type":
-            classes.append(element[key])
-        
-        if isinstance(element[key], str):
-            literals.append(element[key])
-        elif isinstance(element[key], object):
-            parseElement(element[key], classes, entities, properties, literals)
-
-        properties.append(key)
-
-'''
-@param file_path path to the file to be parsed
-@param dataset_content dictionary with the elements parsed until now
-'''
-def parse_as_JSON(file_path: str, dataset_content):
-    json_file = json.load(codecs.open(file_path, "r", "utf-8-sig"), strict=False)
-
-    graph = json_file["@graph"]
-
-    for element in graph:
-
-        parseElement(element, dataset_content["classes"], dataset_content["entities"], dataset_content["properties"], dataset_content["literals"])
-
+            literals.append(element.text)
 
 '''
 @param dataset_path path to the dataset folder
@@ -106,9 +81,6 @@ def mineFile(dataset_path:str, dataset: str, file: str, dataset_content: dict, f
     ext = file.split(".")[-1]
 
     try: 
-
-        if ext == "jsonld":
-            parse_as_JSON(file_path, dataset_content)
 
         if ext == "rdf" or ext == "nt":
             parse_as_XML(file_path, dataset_content)
@@ -130,8 +102,6 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
 
     dataset_path = datasets_directory_path+"/"+dataset 
 
-    dataset_content = {}
-
     #open the dataset metadata file
     dataset_metadata_file = open(dataset_path+"/dataset_metadata.json", "r", encoding="utf-8")
     dataset_metadata = json.load(dataset_metadata_file, strict = False)
@@ -141,6 +111,8 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
     if dataset_metadata["mined_rtff"] and resume:
         return 
 
+    dataset_content = dict()
+
     dataset_content["classes"] = list()
     dataset_content["entities"] = list()
     dataset_content["literals"] = list()
@@ -148,12 +120,12 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
 
     #print("Mining dataset: "+folder.name)
 
-    mined_files = 0
+    mined_files = list()
 
     for file in errors:
         
         if mineFile(dataset_path, dataset, file, dataset_content, f_log):
-            mined_files+=1 
+            mined_files.append(file) 
 
     json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
 

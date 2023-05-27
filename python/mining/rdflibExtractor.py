@@ -35,9 +35,9 @@ def getLiterals(graph) -> list:
     return literals
 
 
-def getClasses(graph) -> list:
+def getClassesAndEntities(graph) -> dict:
     q = """
-    SELECT ?class
+    SELECT ?class ?s
     WHERE {
         ?s a ?class .
     }
@@ -45,29 +45,14 @@ def getClasses(graph) -> list:
     match = graph.query(q)
 
     classes = list()
-
-    for item in match:
-        classes.append(item[0])
-
-    return classes
-
-
-def getEntities(graph) -> list:
-    q = """
-    SELECT ?s
-    WHERE {
-        ?s a ?class .
-    }
-    """
-    match = graph.query(q)
-
     entities = list()
 
     for item in match:
-        entities.append(item[0])
+        classes.append(item[0])
+        entities.append(item[1])
 
-    return entities
-
+    return classes, entities
+    
 
 def getProperties(graph) -> list:
     q = """
@@ -93,7 +78,7 @@ def getProperties(graph) -> list:
 @param f_log miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset_path, dataset, file, dataset_content, f_log):
+def mineFile(dataset_path:str, dataset:str, file:str, dataset_content:dict, f_log:object) -> bool: 
     g = Graph()
 
     file_path = dataset_path+"/"+file
@@ -104,8 +89,7 @@ def mineFile(dataset_path, dataset, file, dataset_content, f_log):
 
             #extract all the info
 
-            classes = getClasses(g)
-            entities = getEntities(g)
+            classes, entities = getClassesAndEntities(g)
             literals = getLiterals(g)
             properties = getProperties(g)
 
@@ -140,20 +124,20 @@ def mineFile(dataset_path, dataset, file, dataset_content, f_log):
 @param f_log error log file
 @param resume boolean used for resume mechanism
 '''
-def mineDataset(datasets_directory_path, dataset, errors, f_log, resume):
+def mineDataset(datasets_directory_path:str, dataset:str, errors:list, f_log:object, resume:bool):
 
     dataset_path = datasets_directory_path+"/"+dataset 
-
-    dataset_content = {}
 
     #open the dataset metadata file
     dataset_metadata_file = open(dataset_path+"/dataset_metadata.json", "r", encoding="utf-8")
     dataset_metadata = json.load(dataset_metadata_file, strict = False)
     dataset_metadata_file.close()
 
-    #in this if I am also checking for the resume mechanism
-    if dataset_metadata["mined"] and resume:
+    #checking for the resume mechanism
+    if dataset_metadata["mined_rdflib"] and resume:
         return 
+
+    dataset_content = dict()
 
     dataset_content["classes"] = list()
     dataset_content["entities"] = list()
@@ -162,12 +146,12 @@ def mineDataset(datasets_directory_path, dataset, errors, f_log, resume):
 
     #print("Mining dataset: "+folder.name)
 
-    mined_files = 0
+    mined_files = list()
 
     for file in errors:
         
         if mineFile(dataset_path, dataset, file, dataset_content, f_log):
-            mined_files+=1 
+            mined_files.append(file) 
 
     json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
 
@@ -226,7 +210,7 @@ def main():
             break
 
         line2 = f_log_jena.readline()
-        line3 = f_log_jena.readline()
+        f_log_jena.readline()
     
         dataset = line1.split(": ")[1].strip("\n")
         file = line2.split(": ")[1].strip("\n")
