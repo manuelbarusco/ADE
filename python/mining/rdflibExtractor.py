@@ -10,7 +10,6 @@ from rdflib.namespace import RDF
 import json
 import os
 import logging
-from tqdm import tqdm
 
 
 SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]

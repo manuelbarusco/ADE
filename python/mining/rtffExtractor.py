@@ -4,14 +4,10 @@ that are not parsed by JENA or RDFLib because are broken files: these files may 
 syntax or other problems
 """
 
-import pathlib
 import json
 import os
-import logging
-from tqdm import tqdm
 from lxml import etree
 import json
-import codecs
 
 SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
 
