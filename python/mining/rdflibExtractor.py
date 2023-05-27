@@ -134,8 +134,9 @@ def mineDataset(datasets_directory_path:str, dataset:str, errors:list, f_log:obj
     dataset_metadata_file.close()
 
     #checking for the resume mechanism
-    if dataset_metadata["mined_rdflib"] and resume:
-        return 
+    if "mined_rdflib" in dataset_metadata.keys():
+        if dataset_metadata["mined_rdflib"] and resume:
+            return 
 
     dataset_content = dict()
 
@@ -182,8 +183,8 @@ def main():
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
-    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                               #path to the folder of the downloaded datasets
+    #datasets_directory_path = "/media/manuel/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
+    datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                               #path to the folder of the downloaded datasets
     error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')              #path to the error log file
     jena_error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error_log.txt')           #path to the error log file of the jena miner
     resume = False                                                                                #boolean that indicates if the mining must be resumed from the last results

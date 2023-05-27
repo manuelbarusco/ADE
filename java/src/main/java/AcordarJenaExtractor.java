@@ -67,9 +67,9 @@ public class AcordarJenaExtractor {
         for(String file: minedFiles)
             minedFilesJSON.add(file);
 
-        datasetMetadata.add("mined_files_jena", minedFilesJSON);
         datasetMetadata.addProperty("mined_jena", true);
-
+        datasetMetadata.add("mined_files_jena", minedFilesJSON);
+    
         try{
             FileWriter datasetMetadataFile=new FileWriter(path, StandardCharsets.UTF_8);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -86,7 +86,7 @@ public class AcordarJenaExtractor {
      * @throws IOException if there are problem during the writing in the log file
      */
     public void mineDataset(File dataset) throws IOException {
-        //System.out.println("Mining dataset: "+dataset);
+        System.out.println("Mining dataset: "+dataset);
 
         HashMap<String, LinkedList<String>> data = new HashMap<>();
         data.put(StreamRDFParser.CustomTriple.CLASSES, new LinkedList<>());
