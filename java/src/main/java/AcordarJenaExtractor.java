@@ -3,10 +3,7 @@ import com.google.gson.*;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 public class AcordarJenaExtractor {
 
@@ -51,9 +48,9 @@ public class AcordarJenaExtractor {
     /**
      * This method update the dataset_metadata.json file after the dataset parsing
      * @param path to the dataset_metadata.json file
-     * @param minedFiles number of mined files for the dataset by Jena
+     * @param minedFiles list of mined files for the dataset by Jena
      */
-    private void updateJSONFIle(String path, int minedFiles){
+    private void updateJSONFIle(String path, List<String> minedFiles){
         JsonElement json = null;
         try {
             Reader reader = new FileReader(path, StandardCharsets.UTF_8);
@@ -66,7 +63,11 @@ public class AcordarJenaExtractor {
         //get the JsonObject to udpate
         JsonObject datasetMetadata = json.getAsJsonObject();
 
-        datasetMetadata.addProperty("mined_files_jena", minedFiles);
+        JsonArray minedFilesJSON = new JsonArray();
+        for(String file: minedFiles)
+            minedFilesJSON.add(file);
+
+        datasetMetadata.add("mined_files_jena", minedFilesJSON);
         datasetMetadata.addProperty("mined_jena", true);
 
         try{
@@ -96,7 +97,7 @@ public class AcordarJenaExtractor {
         //list all the files
         File[] files = dataset.listFiles();
 
-        int minedFiles = 0;
+        List<String> minedFiles = new LinkedList<String>();
 
         for(File file: files){
 
@@ -132,7 +133,7 @@ public class AcordarJenaExtractor {
                     }
 
                     parser.close();
-                    minedFiles++;
+                    minedFiles.add(file.getName());
 
                 } catch (Exception e) {
                     //remove from the exception message all the \n characters that can break the message
@@ -226,10 +227,9 @@ public class AcordarJenaExtractor {
         logFile.close();
     }
 
-
     public static void main(String[] args) throws IOException {
-        String datasetsFolder = "/media/manuel/Tesi/Datasets";
-        //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
+        //String datasetsFolder = "/media/manuel/Tesi/Datasets";
+        String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
         String logFilePath = "/home/manuel/Tesi/Codebase/ADE/logs/jena_miner_error_log.txt";
         AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath);
 
