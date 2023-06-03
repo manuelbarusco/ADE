@@ -104,10 +104,10 @@ def download(url: str, file_name: str, dataset_directory_path: str, ) -> bool:
 @param dataset_id, id of the dataset
 @param f_log log file for the errors
 '''
-def retryDownloadDataset(datasets_folder_path, dataset_id, f_log):
+def retryDownloadDataset(datasets_folder_path:str , dataset_id:int , f_log:object):
 
     #define the dataset directory path
-    dataset_directory_path = f"{datasets_folder_path}/dataset-{dataset_id}"
+    dataset_directory_path = f"{datasets_folder_path}/dataset-{str(dataset_id)}"
     
     #define the dataset_metadata.json file path
     metadata_file_path = f"{dataset_directory_path}/dataset_metadata.json"
@@ -118,11 +118,12 @@ def retryDownloadDataset(datasets_folder_path, dataset_id, f_log):
     metadata_file.close()
 
     #read the error urls in the dataset
+    fixed_error_urls = set(metadata["failed_download_urls"])
     error_urls = set(metadata["failed_download_urls"])
     
     downloaded_files = metadata["downloaded_urls"]
 
-    for url in error_urls:
+    for url in fixed_error_urls:
         try:
             
             #extract the file name from the content-disposition header of a request if available
@@ -142,12 +143,12 @@ def retryDownloadDataset(datasets_folder_path, dataset_id, f_log):
 
         except Exception as err:
             error_message = str(err).replace("\n"," ")
-            print("Still error in dataset: "+dataset_id+"\nURL: "+url+"\nError: "+error_message+"\n")
-            f_log.write("Still error in dataset: "+dataset_id+"\nURL: "+url+"\nError: "+error_message+"\n\n")
+            print("Still error in dataset: "+str(dataset_id)+"\nURL: "+url+"\nError: "+error_message+"\n")
+            f_log.write("Still error in dataset: "+str(dataset_id)+"\nURL: "+url+"\nError: "+error_message+"\n\n")
 
     # update the dataset_metadata.json file
     metadata["downloaded_urls"] = downloaded_files
-    metadata["failed_download_urls"] = error_urls
+    metadata["failed_download_urls"] = list(error_urls)
     metadata["download_info"] = {
         "downloaded" : len(downloaded_files),
         "total_URLS" : len(downloaded_files) + len(error_urls)
@@ -167,11 +168,10 @@ def main():
 
     #define the paths 
 
-    #datasets_folder_path = "/home/manuel/Tesi/Datasets"                                         #path to the folder that contains the datasets
-    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets-1"
+    datasets_folder_path = "/media/manuel/Tesi/Datasets"                                         #path to the folder that contains the datasets
     downloader_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log.txt')          #path to the downloader error log file
     error_log_file_path = os.path.join(scriptDir, 'logs/download_retry_error_log.txt')           #path to the error log file
-    resume_row = 0                                                                               #row progress in the log file from which resume the download
+    resume_row = None                                                                             #row progress in the log file from which resume the download
 
     error_log_file = None
     #open the error log file
@@ -195,11 +195,16 @@ def main():
         downloader_log_file.readline()
         downloader_log_file.readline()
 
-        dataset_id = line1.split(": ")[1].strip("\n")
+        dataset_id = int(line1.split(": ")[1].strip("\n"))
 
         problem_datasets.add(dataset_id)
 
     downloader_log_file.close()
+
+    print(f"Find: {len(problem_datasets)} datasets with errors")
+
+    problem_datasets = list(problem_datasets)
+    problem_datasets = sorted(problem_datasets)
             
     index = 0
     for dataset_id in problem_datasets:
