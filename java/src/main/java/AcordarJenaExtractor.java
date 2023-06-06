@@ -86,7 +86,7 @@ public class AcordarJenaExtractor {
      * @throws IOException if there are problem during the writing in the log file
      */
     public void mineDataset(File dataset) throws IOException {
-        System.out.println("Mining dataset: "+dataset);
+        //System.out.println("Mining dataset: "+dataset);
 
         HashMap<String, LinkedList<String>> data = new HashMap<>();
         data.put(StreamRDFParser.CustomTriple.CLASSES, new LinkedList<>());
@@ -228,8 +228,8 @@ public class AcordarJenaExtractor {
     }
 
     public static void main(String[] args) throws IOException {
-        //String datasetsFolder = "/media/manuel/Tesi/Datasets";
-        String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
+        String datasetsFolder = "/media/manuel/Tesi/Datasets";
+        //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
         String logFilePath = "/home/manuel/Tesi/Codebase/ADE/logs/jena_miner_error_log.txt";
         AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath);
 
