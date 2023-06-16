@@ -83,7 +83,7 @@ def main():
     #datasets_directory = "/home/manuel/Tesi/ACORDAR/Datasets"                   
     datasets_directory = "/media/manuel/Tesi/Datasets"                                       #path to the folder of the down    loaded datasets
     
-    error_log_file_path = os.path.join(scriptDir, '../logs/checker_error_log.txt')                        #path to the error log file
+    error_log_file_path = os.path.join(scriptDir, 'logs/checker_error_log_merger.txt')                        #path to the error log file
 
     startCheck(datasets_directory, error_log_file_path)
 

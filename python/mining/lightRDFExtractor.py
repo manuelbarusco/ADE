@@ -7,7 +7,7 @@ import json
 import os
 import lightrdf
 
-SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
+SUFFIXES = ["rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"]
 
 
 def is_literal(node: str) -> bool:
@@ -22,11 +22,11 @@ def is_literal(node: str) -> bool:
 @param f_log miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset_path:str, dataset: str, file: str, dataset_content: dict, f_log: object) -> bool : 
-    classes = dataset_content["classes"]
-    entities = dataset_content["entities"]
-    literals = dataset_content["literals"]
-    properties = dataset_content["properties"]
+def mineFile(dataset_path:str, dataset: str, file: str, f_log: object) -> bool : 
+    classes = open(dataset_path+"/classes_lightrdf.txt", "a")
+    entities = open(dataset_path+"/entities_lightrdf.txt", "a")
+    literals = open(dataset_path+"/literals_lightrdf.txt", "a")
+    properties = open(dataset_path+"/properties_lightrdf.txt", "a")
 
     ext = file.split(".")[-1]
 
@@ -43,27 +43,39 @@ def mineFile(dataset_path:str, dataset: str, file: str, dataset_content: dict, f
                 prop = triple[1]
                 obj = triple[2]
 
-                entities.append(sub)
+                entities.write(sub+"\n")
 
                 if "type" in prop.lower() or "a" == prop.lower():
-                    classes.append(obj)
+                    classes.write(obj+"\n")
                     continue
 
-                properties.append(prop)
+                properties.write(prop+"\n")
 
                 if is_literal(obj):
-                    literals.append(obj)
+                    literals.write(obj+"\n")
                 else:
-                    entities.append(obj)
+                    entities.write(obj+"\n")
 
         except Exception as e :
-            f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+str(e)+"\n")
+            error_message = str(e).strip("\n")
+            f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+error_message+"\n")
             return False
-        
+
+        entities.close() 
+        classes.close()
+        properties.close()
+        literals.close()   
         return True
     
+
+    entities.close() 
+    classes.close()
+    properties.close()
+    literals.close()
     f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: File not RDF\n")
     return False
+
+
 
 
 '''
@@ -87,31 +99,14 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
         if dataset_metadata["mined_lightrdf"] and resume:
             return
 
-    dataset_content = dict()
-
-    dataset_content["classes"] = list()
-    dataset_content["entities"] = list()
-    dataset_content["literals"] = list()
-    dataset_content["properties"] = list()
-
-    #print("Mining dataset: "+folder.name)
+    print("Mining dataset: "+dataset)
 
     mined_files = list()
 
     for file in errors:
         
-        if mineFile(dataset_path, dataset, file, dataset_content, f_log):
+        if mineFile(dataset_path, dataset, file, f_log):
             mined_files.append(file) 
-
-    json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
-
-    #writing the json file of the content
-    with open(dataset_path+"/dataset_content_lightrdf.json", "w", encoding="utf-8") as dataset_content_file:
-        dataset_content_file.write(json_serial)
-
-    dataset_content_file.close()
-    del json_serial
-    del dataset_content
 
     #update the dataset_metadata json file with the mining information
     dataset_metadata["mined_lightrdf"] = True
@@ -132,8 +127,8 @@ def main():
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    #datasets_directory_path = "/media/manuel/Tesi/Datasets"                                      #path to the folder of the downloaded datasets
-    datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                #path to the folder of the downloaded datasets
+    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                      #path to the folder of the downloaded datasets
+    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                #path to the folder of the downloaded datasets
     
     error_log_file_path = os.path.join(scriptDir, 'logs/lightrdf_miner_error_log.txt')            #path to the error log file
     rdflib_error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner
@@ -172,6 +167,8 @@ def main():
             datasets_files_errors[dataset].append(file)
                 
     print("Find: "+str(n_dataset)+" datasets with big files, starts mining ...")
+
+    print(datasets_files_errors)
 
     i = 0 
     for dataset, errors in datasets_files_errors.items():
