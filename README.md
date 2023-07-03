@@ -1,1 +1,11 @@
 # ADE
+
+ADE (Acordar Download and Extraction) repository contains the code (in Java and Python) for the download and parsing phases of the ACORDAR collection. These are the first steps for a more complete reproducibility study based on the paper: https://dome40.eu/sites/default/files/2022-11/ACORDAR%20A%20Test%20Collection%20for%20Ad%20Hoc%20Content-Based%20%28RDF%29%20Dataset%20Retrieval.pdf
+
+The execution pipeline is the follwoing:
+1. Download phase by using the code in the /python/download directory
+2. File recovering by using the code in the /python/file_recover directory
+3. Dataset parsing by using the code in the /java and python/mining directory 
+4. Statistics retrieving by using the Jupyter Notebook in the /python/statistics directory
+
+Inside the /java and /python folders you can find other README.md files with all the instructions for running the code. 
