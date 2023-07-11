@@ -167,7 +167,7 @@ public class StreamRDFParser implements Iterator<StreamRDFParser.CustomTriple> {
     //ONLY FOR DEBUG PURPOSE
     public static void main(String[] args){
         //RDFParser parser = new RDFParser("/home/manuel/Tesi/ACORDAR/Test/dataset-50/wappen.rdf");
-        StreamRDFParser parser = new StreamRDFParser("/home/manuel/Tesi/ACORDAR/Datasets/dataset-1/curso.ttl");
+        StreamRDFParser parser = new StreamRDFParser("/home/manuel/Tesi/ACORDAR/Datasets/dataset-1/curso-sf-dump.ttl");
 
         int i = 0;
         while(parser.hasNext()){
