@@ -1,12 +1,13 @@
 '''
-This script will download all the datasets indicated in the datasets.json file provided in input
+This script will download all the datasets indicated in the ACORDAR datasets.json file provided in input
 For every dataset it will:
-* create the directory for the dataset
+* create the directory for the dataset (name: dataset-id)
 * download all the dataset files in the directory
-* crete the json file with all the dataset meta-data included the download info in the dataset_metadata.json file 
-  and it will remove all the special characters in the name and encode it using UTF-8 encoding.
+* create the dataset_metadata.json file that contains:
+    - all the dataset meta-data fields without all the special characters in the name and encoded by using UTF-8 encoding. 
+    - download info (success and failed URLs)
 
-If there are errors during the download we will log in the dataset_metadata.json which links are not working
+If there are errors during the download it will log in the dataset_metadata.json which links are not working
 and also in a error log file (txt) for a faster retrieve of the errors
 '''
 
@@ -17,13 +18,16 @@ import os
 import re
 from slugify import slugify
 import time
+import argparse 
+import logging
 
+#accepted RDF suffixes
 RDF_SUFFIXES = ["rdf", "ttl", "owl", "n3", "nt", "ntriples", "jsonld", "nq", "trig", "trix"]
 
 """
-@param url, string with url 
-@param dataset_directory_path path to the dataset directory
-@return generated file name
+@param: url, string with url 
+@param: dataset_directory_path, path to the dataset directory
+@return generated file name for the file downloaded from the url
 """
 def getFilenNameFromURL(url: str, dataset_directory_path: str) -> str:
 
@@ -61,8 +65,8 @@ def getFilenNameFromURL(url: str, dataset_directory_path: str) -> str:
     return file_name
 
 """
-@param url, string with the url
-@return the file name to which the url is referring, if the header is not setted it returns None
+@param: url, string with the url
+@return: the file name to which the url is referring by looking to the headers, if the header is not setted it returns None
 """
 def getFileNameFromRequest(url: str) -> str:
     response = requests.head(url)
@@ -75,9 +79,9 @@ def getFileNameFromRequest(url: str) -> str:
     return None
 
 """
-@param url, url to be downloaded
-@param dataset_directory_path, path to the folder in which the downloaded file will be saved
-@param file_name: name of the downloaded file
+@param: url, url to be downloaded
+@param: dataset_directory_path, path to the folder in which the downloaded file will be saved
+@param: file_name, name of the downloaded file
 @return True if the download has been completed without errors, otherwise an exception is thrown
 """
 def download(url: str, file_name: str, dataset_directory_path: str, ) -> bool:
@@ -105,11 +109,10 @@ def download(url: str, file_name: str, dataset_directory_path: str, ) -> bool:
     return True
   
 '''
-@param dataset, a dictionary with all the dataset info (metadata and links)
-@param datasets_folder_path, path where to store all the datasets
-@param f_log log file for the errors
+@param: dataset, a dictionary with all the dataset info (metadata and links)
+@param: datasets_folder_path, path where to store all the datasets
 '''
-def downloadDataset(dataset: dict, datasets_folder_path: str, f_log: object):
+def downloadDataset(dataset: dict, datasets_folder_path: str):
 
     dataset_id = dataset["dataset_id"]
 
@@ -148,8 +151,13 @@ def downloadDataset(dataset: dict, datasets_folder_path: str, f_log: object):
         except Exception as err:
             failed_urls.append(url)
             error_message = str(err).replace("\n"," ")
-            print("Dataset: "+dataset_id+"\nURL: "+url+"\nError: "+error_message+"\n")
-            f_log.write("Dataset: "+dataset_id+"\nURL: "+url+"\nError: "+error_message+"\n\n")
+            log.warning(
+                f"""
+                Dataset: {dataset_id}
+                URL: {url}
+                Error: {error_message}
+                """
+            )
 
     # serialize metadata and download information, we clean from control charachters title 
     # and description fields 
@@ -178,44 +186,48 @@ def downloadDataset(dataset: dict, datasets_folder_path: str, f_log: object):
     metadata_file.close()
         
 
-def main():
-    scriptDir = os.path.dirname(os.path.realpath('__file__'))
-
-    #define the paths 
-    datasets_json_path = "/home/manuel/Tesi/ACORDAR/Data/datasets.json"                          #path to the datasets list json file
-    #datasets_folder_path = "/home/manuel/Tesi/Datasets"                                          #path to the folder that contains the datasets
-    datasets_folder_path = "/home/manuel/Tesi/ACORDAR/Datasets-1"
-    error_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log_1.txt')               #path to the error log file
-    resume_row = 0                                                                            #row in the datasets.json file from which resume the download
-
-
-    error_log_file = None
-    #open the error log file
-    if resume_row is None:
-        error_log_file = open(error_log_file_path, "w", encoding="utf-8")
-    else:
-        error_log_file = open(error_log_file_path, "a", encoding="utf-8")
+if __name__ == "__main__" : 
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("datasets_json", type=str, help="ACORDAR datasets.json file path")
+    parser.add_argument(
+        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    parser.add_argument(
+        "--start-from",
+        type=int,
+        help="Start downloading from the given row index in the datasets.json file (included)",
+    )
+    args = parser.parse_args()         
+    
+    #row in the datasets.json file from which resume the download
+    resume_row = None
+    if args.start_from is not None:
+        resume_row = args.start_from                                                              
 
     #read the datasets list json file provided
-    datasets_list_file = open(datasets_json_path, "r", encoding="utf-8")
+    datasets_list_file = open(args.datasets_json, "r", encoding="utf-8")
     datasets_list = json.load(datasets_list_file, strict=False)
     datasets_list_file.close()
 
     row_index = 0
 
+    global log 
+    logging.basicConfig(
+        filename="logs/downloader_errors.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("downloader")
+
+
     for dataset in datasets_list["datasets"]:
         dataset_id = dataset["dataset_id"]
 
         if resume_row is None or (resume_row is not None and row_index > resume_row):
-            print(f"Processing dataset [ID: {dataset_id}] [INDEX: {row_index}] downloads: {len(dataset['download'])}")
-            downloadDataset(dataset, datasets_folder_path, error_log_file)
+            print(f"Processing dataset [ID: {dataset_id}] [ROW_INDEX: {row_index}] downloads: {len(dataset['download'])}")
+            downloadDataset(dataset, args.datasets_folder)
         else:
             print(f"Already downloaded dataset with ID {dataset_id} - [INDEX: {row_index}]")
         
         row_index += 1
-    
-    error_log_file.close()
-
-
-if __name__ == "__main__" : 
-    main(); 

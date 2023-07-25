@@ -2,22 +2,26 @@
 This script will retry the download of all the failed download 
 reported in the downloader logs.
 If an URL now works it will download the file in the correct dataset folder
-and it will log it, else it will log an error in the same format of the downloader error logs
+and it will update the correct dataset_metadata.json file, 
+else it will log an error in the same format of the downloader error log
 '''
 
 import json 
 import requests
 from tqdm import tqdm
 import os
-import re
+import argparse
 from slugify import slugify
 import time
+import logging
 
+#accepted RDF suffixes
 RDF_SUFFIXES = ["rdf", "ttl", "owl", "n3", "nt", "ntriples", "jsonld", "nq", "trig", "trix"]
 
+
 """
-@param url, string with url 
-@param dataset_directory_path path to the dataset directory
+@param: url, string with url 
+@param: dataset_directory_path, path to the dataset directory
 @return generated file name
 """
 def getFilenNameFromURL(url: str, dataset_directory_path: str) -> str:
@@ -56,8 +60,8 @@ def getFilenNameFromURL(url: str, dataset_directory_path: str) -> str:
     return file_name
 
 """
-@param url, string with the url
-@return the file name to which the url is referring, if the header is not setted it returns None
+@param: url, string with the url
+@return: the file name to which the url is referring by looking to the headers, if the header is not setted it returns None
 """
 def getFileNameFromRequest(url: str) -> str:
     response = requests.head(url)
@@ -70,9 +74,9 @@ def getFileNameFromRequest(url: str) -> str:
     return None
 
 """
-@param url, url to be downloaded
-@param dataset_directory_path, path to the folder in which the downloaded file will be saved
-@param file_name: name of the downloaded file
+@param: url, url to be downloaded
+@param: file_name, name of the downloaded file
+@param: dataset_directory_path, path to the folder in which the downloaded file will be saved
 @return True if the download has been completed without errors, otherwise an exception is thrown
 """
 def download(url: str, file_name: str, dataset_directory_path: str, ) -> bool:
@@ -100,11 +104,10 @@ def download(url: str, file_name: str, dataset_directory_path: str, ) -> bool:
     return True
   
 '''
-@param datasets_folder_path, path where to store all the datasets
-@param dataset_id, id of the dataset
-@param f_log log file for the errors
+@param: datasets_folder_path, path where to store all the datasets
+@param: dataset_id, id of the dataset
 '''
-def retryDownloadDataset(datasets_folder_path:str , dataset_id:int , f_log:object):
+def retryDownloadDataset(datasets_folder_path:str , dataset_id:int):
 
     #define the dataset directory path
     dataset_directory_path = f"{datasets_folder_path}/dataset-{str(dataset_id)}"
@@ -143,8 +146,13 @@ def retryDownloadDataset(datasets_folder_path:str , dataset_id:int , f_log:objec
 
         except Exception as err:
             error_message = str(err).replace("\n"," ")
-            print("Still error in dataset: "+str(dataset_id)+"\nURL: "+url+"\nError: "+error_message+"\n")
-            f_log.write("Still error in dataset: "+str(dataset_id)+"\nURL: "+url+"\nError: "+error_message+"\n\n")
+            log.warning(
+                f"""
+                Dataset: {dataset_id}
+                URL: {url}
+                Error: {error_message}
+                """
+            )
 
     # update the dataset_metadata.json file
     metadata["downloaded_urls"] = downloaded_files
@@ -161,24 +169,37 @@ def retryDownloadDataset(datasets_folder_path:str , dataset_id:int , f_log:objec
     metadata_file = open(metadata_file_path, "w", encoding="utf-8")
     metadata_file.write(metadata_json)
     metadata_file.close()
+    
 
-
-def main():
+if __name__ == "__main__" : 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    #define the paths 
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    parser.add_argument(
+        "--start-from",
+        type=int,
+        help="Start downloading from the given row index in the downloader error log file (included)",
+    )
+    args = parser.parse_args()         
+    
+    resume_row = None
+    if args.start_from is not None:
+        resume_row = args.start_from  
 
-    datasets_folder_path = "/media/manuel/Tesi/Datasets"                                         #path to the folder that contains the datasets
-    downloader_log_file_path = os.path.join(scriptDir, 'logs/downloader_error_log.txt')          #path to the downloader error log file
-    error_log_file_path = os.path.join(scriptDir, 'logs/download_retry_error_log.txt')           #path to the error log file
-    resume_row = None                                                                             #row progress in the log file from which resume the download
+    global log 
+    logging.basicConfig(
+        filename="logs/downloader_errors.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("download_retry")
 
-    error_log_file = None
-    #open the error log file
-    if resume_row is None:
-        error_log_file = open(error_log_file_path, "w", encoding="utf-8")
-    else:
-        error_log_file = open(error_log_file_path, "a", encoding="utf-8")
+    #path to the downloader error log file
+    downloader_log_file_path = os.path.join(scriptDir, 'logs/downloader_errors.log')          
 
     #read downloader error log file provided
     downloader_log_file = open(downloader_log_file_path, "r", encoding="utf-8")
@@ -210,12 +231,7 @@ def main():
     for dataset_id in problem_datasets:
         if resume_row is None or (resume_row is not None and index > resume_row):
             print(f"Processing dataset [ID: {dataset_id}] [INDEX: {index}]")
-            retryDownloadDataset(datasets_folder_path, dataset_id, error_log_file)
+            retryDownloadDataset(args.datasets_folder, dataset_id)
         else:
             print(f"Already processed dataset with ID {dataset_id} - [INDEX: {index}]")
         index += 1
-    
-    error_log_file.close()
-
-if __name__ == "__main__" : 
-    main(); 
