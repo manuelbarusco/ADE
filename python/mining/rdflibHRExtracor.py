@@ -1,6 +1,6 @@
 """
 Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes
-The purpose of this extractor is to extract a human readable version of the triples 
+The purpose of this extractor is to extract a human readable version of the triples elements
 by using the rdfs:label and rdfs:comment properties
 """
 
@@ -12,13 +12,20 @@ import json
 import os
 import logging
 import re 
+import argparse
+import logging
 from tqdm import tqdm
 
 
-SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
+RDF_SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
 
+#limit size of 100MB for parsing a file with RDFLib
 FILE_LIMIT_SIZE = 100
 
+"""
+@param uri, string with the uri
+@return last part of the uri, that contains the name
+"""
 def getNameFromUri(uri:str) -> str:
     split = re.split("[/#]", uri)
     return split[-1]
@@ -42,24 +49,20 @@ def getLiterals(graph) -> list:
 def getClassesAndEntities(graph) -> dict:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?s ?ls ?cs ?c ?lc ?cc
+    SELECT ?s ?hds ?c ?hdc
     WHERE {
-        ?s a ?c
+        ?s a ?c .
+
+        FILTER(!isBlank(?s)) .
         
-        #retrieve a possible label or comment
-        #for the class or the entity
-        OPTIONAL{
-            ?c rdfs:label ?lc 
-        }
-        OPTIONAL{
-            ?c rdfs:comment ?cc
+        OPTIONAL { 
+            ?s ?p ?hds .
+            FILTER(REGEX(str(?p), "(name|description|comment|label|title)", "i"))
         }
         
-        OPTIONAL{
-            ?s rdfs:label ?ls . 
-        }
-        OPTIONAL{
-            ?s rdfs:comment ?cs
+        OPTIONAL {
+            ?c ?pc ?hdc .
+            FILTER(REGEX(str(?pc), "(name|description|comment|label|title)", "i"))
         }
     }
     """
@@ -68,48 +71,43 @@ def getClassesAndEntities(graph) -> dict:
     classes = list()
     entities = list()
 
+    #check the availability of labels and descriptions
     for item in match:
         if item[1] is not None:
             entities.append(item[1])
-        elif item[2] is not None:
-            entities.append(item[2])
-        else:
+        else: 
             entities.append(item[0])
 
     
-        if item[4] is not None:
-            classes.append(item[4])
-        elif item[5] is not None:
-            classes.append(item[5])
+        if item[3] is not None:
+            classes.append(item[3])
         else:
-            classes.append(getNameFromUri(item[3]))
+            classes.append(getNameFromUri(item[2]))
         
-
     return classes, entities    
 
 def getProperties(graph) -> list:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?p ?l ?c  
+    SELECT DISTINCT ?p ?hdp  
     WHERE { 
         ?s ?p ?o .
+        
         OPTIONAL {
-            ?p rdfs:label ?l
+            ?p ?lp ?hdp .
+            FILTER(REGEX(str(?lp), "(name|description|comment|label|title)", "i"))
         }
-        OPTIONAL {
-            ?p rdfs:label ?c
-        }
+            
     }
     """
     match = graph.query(q)
 
     properties = list()
 
+    #check the availability of labels and descriptions
     for item in match:
         if item[1] is not None:
             properties.append(item[1])
-        elif item[2] is not None:
-            properties.append(item[2])
         else:
             properties.append(getNameFromUri(item[0]))
 
@@ -192,13 +190,13 @@ def mineDataset(dataset:object, f_log:object, resume:bool):
 
     #check for the files in the directory and consider them in order 
     #of importance based on their dimension and by skipping same
-    #version but with different extensions of the same file
+    #versions but with different extensions of the same file
 
     files_group = dict()
     for file in os.scandir(dataset.path):
         file_extension = pathlib.Path(file.path).suffix
         
-        if file_extension in SUFFIXES:
+        if file_extension in RDF_SUFFIXES:
             file_name = pathlib.Path(file.path).stem
             if file_name not in files_group.keys():
                 files_group[file_name] = list()
@@ -240,34 +238,40 @@ def mineDataset(dataset:object, f_log:object, resume:bool):
     del json_serial
     del dataset_metadata
 
+#3 ore e 40 + 5 ore e 48 min + 4 ore 45 min + 4 ore
 
-def main():
+if __name__ == "__main__":
 
-    scriptDir = os.path.dirname(os.path.realpath('__file__'))
-
-    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                     #path to the folder of the downloaded datasets
-    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                               #path to the folder of the downloaded datasets
-    error_log_file_path = os.path.join(scriptDir, 'logs/rdflibhr_miner_error_log.txt')           #path to the error log file
-    resume = True                                                                               #boolean that indicates if the mining must be resumed from the last results
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "datasets_folder", 
+        type=str, 
+        help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    parser.add_argument(
+        "--resume", 
+        action="store_true",
+		help="Add if you want to resume the parsing process"
+    )
+    args = parser.parse_args()                                                                            
 
     logging.getLogger("rdflib").setLevel(logging.ERROR)
 
-    #open the error log file of the extractor
-    if resume: 
-        f_log=open(error_log_file_path, "a")
-    else:
-        f_log=open(error_log_file_path, "w")
+    global log 
+    logging.basicConfig(
+        filename="logs/rdflib_miner_errors.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("rdflib_miner")
 
-    bar = tqdm(total = len(os.listdir(datasets_directory_path)))
-    for dataset in os.scandir(datasets_directory_path):
+    bar = tqdm(total = len(os.listdir(args.datasets_folder)))
+    for dataset in os.scandir(args.datasets_folder):
         
-        mineDataset(dataset, f_log, resume)
+        mineDataset(dataset, args.resume)
         bar.update(1)
-    
-    f_log.close()
 
-if __name__ == "__main__":
-    main() 
 
 
 

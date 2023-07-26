@@ -191,7 +191,9 @@ if __name__ == "__main__" :
     parser = argparse.ArgumentParser()
     parser.add_argument("datasets_json", type=str, help="ACORDAR datasets.json file path")
     parser.add_argument(
-        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+        "datasets_folder", 
+        type=str, 
+        help="Absolute path to the folder where all the datasets will be downloaded"
     )
     parser.add_argument(
         "--start-from",

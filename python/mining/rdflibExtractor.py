@@ -1,6 +1,7 @@
 """
-Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined from JENA
-
+This script extracts the ACORDAR baseline needed data from all the datasets files 
+with valid RDF suffixes that are not mined from JENA. The file to be parsed must have a 
+limit size of 100MB due to the big RAM usage of RDFLib and for the RAM limitations of my computing system.
 """
 
 import pathlib
@@ -10,9 +11,9 @@ from rdflib.namespace import RDF
 import json
 import os
 import logging
+import argparse
 
-
-SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
+RDF_SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml", ".ntriples", ".nq", ".trig", ".trix"]
 
 FILE_LIMIT_SIZE = 100
 
@@ -77,7 +78,7 @@ def getProperties(graph) -> list:
 @param f_log miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset_path:str, dataset:str, file:str, dataset_content:dict, f_log:object) -> bool: 
+def mineFile(dataset_path:str, dataset:str, file:str, dataset_content:dict) -> bool: 
     g = Graph()
 
     file_path = dataset_path+"/"+file
@@ -106,14 +107,14 @@ def mineFile(dataset_path:str, dataset:str, file:str, dataset_content:dict, f_lo
 
         except rdflib.exceptions.ParserError as e:  
             error = str(e).strip("\n")
-            f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+error+"\n")
+            log.warning(f"Dataset: {dataset}\nFile: {file}\nError: {error}\n")
             return False
         except Exception as e :
             error = str(e).strip("\n")
-            f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+error+"\n")
+            log.warning(f"Dataset: {dataset}\nFile: {file}\nError: {error}\n")
             return False
     else :
-        f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: Bigger than "+str(FILE_LIMIT_SIZE)+"\n")
+        log.warning(f"Dataset: {dataset}\nFile: {file}\nError: Bigger than {str(FILE_LIMIT_SIZE)}\n")
         return False
     
     return True
@@ -125,7 +126,7 @@ def mineFile(dataset_path:str, dataset:str, file:str, dataset_content:dict, f_lo
 @param f_log error log file
 @param resume boolean used for resume mechanism
 '''
-def mineDataset(datasets_directory_path:str, dataset:str, errors:list, f_log:object, resume:bool):
+def mineDataset(datasets_directory_path:str, dataset:str, errors:list, resume:bool):
 
     print("Mining")
 
@@ -154,7 +155,7 @@ def mineDataset(datasets_directory_path:str, dataset:str, errors:list, f_log:obj
 
     for file in errors:
         
-        if mineFile(dataset_path, dataset, file, dataset_content, f_log):
+        if mineFile(dataset_path, dataset, file, dataset_content):
             mined_files.append(file) 
 
     json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
@@ -182,26 +183,37 @@ def mineDataset(datasets_directory_path:str, dataset:str, errors:list, f_log:obj
     del dataset_metadata
 
 
-def main():
-
+if __name__ == "__main__":
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                       #path to the folder of the downloaded datasets
-    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                               #path to the folder of the downloaded datasets
-    error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')              #path to the error log file
-    jena_error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error_log.txt')           #path to the error log file of the jena miner
-    resume = False                                                                                #boolean that indicates if the mining must be resumed from the last results
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    parser.add_argument(
+        "--resume", 
+        action="store_true",
+		help="Add if you want to resume the parsing process"
+    )
+    args = parser.parse_args()
+
+    #path to the error log file of the jena miner
+    jena_error_log_file_path = os.path.join(scriptDir, '../../java/src/main/java/logs/jena_miner_error_log.txt')          
+                                                                                
 
     logging.getLogger("rdflib").setLevel(logging.ERROR)
 
+    global log 
+    logging.basicConfig(
+        filename="logs/rdflib_miner_errors.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("rdflib_miner")
+
     #open the error log file of the jena miner
     f_log_jena=open(jena_error_log_file_path, "r")
-
-    #open the error log file of the extractor
-    if resume: 
-        f_log=open(error_log_file_path, "a")
-    else:
-        f_log=open(error_log_file_path, "w")
 
     datasets_files_errors = {}
 
@@ -230,15 +242,11 @@ def main():
 
     i = 0 
     for dataset, errors in datasets_files_errors.items():
-        mineDataset(datasets_directory_path, dataset, errors, f_log, resume)
+        mineDataset(args.datasets_folder, dataset, errors, args.resume)
         i+=1
         print("Mined: "+str(i)+" datasets over: "+str(n_dataset))
 
-    
-    f_log.close()
 
-if __name__ == "__main__":
-    main() 
 
 
 
