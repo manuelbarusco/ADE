@@ -153,9 +153,9 @@ def downloadDataset(dataset: dict, datasets_folder_path: str):
             error_message = str(err).replace("\n"," ")
             log.warning(
                 f"""
-                Dataset: {dataset_id}
-                URL: {url}
-                Error: {error_message}
+                Dataset: {dataset_id}\n
+                URL: {url}\n
+                Error: {error_message}\n
                 """
             )
 

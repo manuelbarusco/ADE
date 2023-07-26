@@ -2,7 +2,7 @@
 This script will recover the files that are reported by the dataset_checker in its log file
 In particular it will check the mime type of every reported file and:
 * if the file is an html file it will log it and the extension remain the same
-* if the file is a txt file it will check if it is ttl file by checking the @prefix directive in the fist lines
+* if the file is a txt file it will check if it is ttl file by checking the @prefix directive in the first lines
 * if the file is a xml file it will convert it to rdf
 
 In the log file it will log which file have been recovered and which not
@@ -11,6 +11,8 @@ In the log file it will log which file have been recovered and which not
 import os
 import re
 import magic
+import argparse
+import logging
 
 '''
 @param dataset name of the dataset
@@ -65,40 +67,57 @@ def startRecover(datasets_directory,checker_error_log_file_path, error_log_file_
         if(not line):
             break
 
-        #split the line
-        fields = line.split(": ")
+        #skip blank lines
+        if ":" in line:
+            #split the line
+            fields = line.split(": ")
 
-        if fields[0] == "Dataset":
-            dataset = fields[1].strip("\n")
-        elif fields[0] == "File":
-            file = fields[1].strip("\n")
-            if os.path.isfile(datasets_directory+"/"+dataset+"/"+file):
-                if not recoverFile(dataset, file, datasets_directory):
-            
-                    f_log.write("Dataset: "+dataset+"\n")
-                    f_log.write("File: "+file+"\n")
-                    
-                    mime_type = magic.from_file(datasets_directory+"/"+dataset+"/"+file)
-                    f_log.write("Mime: "+mime_type+"\n")
-                else:
+            if fields[0] == "Dataset":
+                dataset = fields[1].strip("\n")
+            elif fields[0] == "File":
+                file = fields[1].strip("\n")
+                if os.path.isfile(datasets_directory+"/"+dataset+"/"+file):
+                    if not recoverFile(dataset, file, datasets_directory):
+                        mime_type = magic.from_file(datasets_directory+"/"+dataset+"/"+file)
 
-                    f_log.write("Recover in Dataset: "+dataset+"\n")
-                    f_log.write("File: "+file+"\n")
+                        log.warning(
+                            f"""
+                            Dataset: {dataset}\n
+                            File: {file}\n
+                            Mime: {mime_type}\n
+                            """
+                        )
+                    else:
+        
+                        log.warning(
+                            f"""
+                            Recover in Dataset: {dataset}\n
+                            File: {file}\n
+                            """
+                        )
     
     f_log_checker.close()
     f_log.close()
 
-
-
-def main():
+if __name__ == "__main__":
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    #datasets_directory = "/home/manuel/Tesi/ACORDAR/Datasets" 
-    datasets_directory = "/media/manuel/Tesi/Datasets"                                   #path to the folder of the downloaded datasets
-    checker_error_log_file_path = os.path.join(scriptDir, '../logs/checker_error_log.txt')           #path to the error log file
-    error_log_file_path = os.path.join(scriptDir, '../logs/recover_error_log.txt')                        #path to the error log file
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    args = parser.parse_args()  
+    
+    global log 
+    logging.basicConfig(
+        filename="logs/simple_file_recover.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("simple_file_recover")
 
-    startRecover(datasets_directory,checker_error_log_file_path, error_log_file_path)
+    #path to the checker error log file path
+    checker_error_log_path = os.path.join(scriptDir, '../download/logs/checker_error_log.txt')       
 
-if __name__ == "__main__":
-    main()
+    startRecover(args.datasets_folder,checker_error_log_path)
