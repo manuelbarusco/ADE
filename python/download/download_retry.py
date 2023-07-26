@@ -4,6 +4,9 @@ reported in the downloader logs.
 If an URL now works it will download the file in the correct dataset folder
 and it will update the correct dataset_metadata.json file, 
 else it will log an error in the same format of the downloader error log
+
+This script will help us in retrying the download from all the URLs that were 
+previously unavailable for the downloader. 
 '''
 
 import json 
@@ -177,7 +180,9 @@ if __name__ == "__main__" :
     # read the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets will be downloaded"
+        "datasets_folder", 
+        type=str, 
+        help="Absolute path to the folder where all the datasets will be downloaded"
     )
     parser.add_argument(
         "--start-from",
@@ -192,7 +197,7 @@ if __name__ == "__main__" :
 
     global log 
     logging.basicConfig(
-        filename="logs/downloader_errors.log",
+        filename="logs/download_retry_errors.log",
         filemode="a",
         format="%(message)s",
     )

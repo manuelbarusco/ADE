@@ -82,13 +82,15 @@ if __name__ == "__main__" :
     # read the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "datasets_folder", type=str, help="Absolute path to the folder where all the datasets are stored"
+        "datasets_folder", 
+        type=str, 
+        help="Absolute path to the folder where all the datasets are stored"
     )
     args = parser.parse_args()     
 
     global log 
     logging.basicConfig(
-        filename="logs/download_checker.log",
+        filename="logs/check_datasets.log",
         filemode="a",
         format="%(message)s"
     )

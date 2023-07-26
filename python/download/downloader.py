@@ -1,14 +1,17 @@
 '''
-This script will download all the datasets indicated in the ACORDAR datasets.json file provided in input
+This script will download all the datasets indicated in the ACORDAR datasets.json file provided in the command line arguments.
+
 For every dataset it will:
 * create the directory for the dataset (name: dataset-id)
 * download all the dataset files in the directory
-* create the dataset_metadata.json file that contains:
-    - all the dataset meta-data fields without all the special characters in the name and encoded by using UTF-8 encoding. 
-    - download info (success and failed URLs)
+* create the dataset_metadata.json file (in the dataset directory) that contains:
+    - all the dataset meta-data fields without all the special characters and encoded by using UTF-8 encoding. 
+    - download info (success and failed URLs and other info)
 
-If there are errors during the download it will log in the dataset_metadata.json which links are not working
-and also in a error log file (txt) for a faster retrieve of the errors
+If there are errors during the download it will log them in the dataset_metadata.json which links are not working
+and also in the error log file for a faster retrieve of the errors.
+
+See the README.md file for the instructions
 '''
 
 import json 
@@ -31,7 +34,7 @@ RDF_SUFFIXES = ["rdf", "ttl", "owl", "n3", "nt", "ntriples", "jsonld", "nq", "tr
 """
 def getFilenNameFromURL(url: str, dataset_directory_path: str) -> str:
 
-    #remove / charachter at the end of the url if present
+    # remove / charachter at the end of the url if present
     if url.endswith("/"):
         url = url[:-1]
 
@@ -189,7 +192,11 @@ def downloadDataset(dataset: dict, datasets_folder_path: str):
 if __name__ == "__main__" : 
     # read the command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("datasets_json", type=str, help="ACORDAR datasets.json file path")
+    parser.add_argument(
+        "datasets_json", 
+        type=str, 
+        help="ACORDAR datasets.json file path"
+    )
     parser.add_argument(
         "datasets_folder", 
         type=str, 
@@ -212,8 +219,6 @@ if __name__ == "__main__" :
     datasets_list = json.load(datasets_list_file, strict=False)
     datasets_list_file.close()
 
-    row_index = 0
-
     global log 
     logging.basicConfig(
         filename="logs/downloader_errors.log",
@@ -222,6 +227,7 @@ if __name__ == "__main__" :
     )
     log = logging.getLogger("downloader")
 
+    row_index = 0
 
     for dataset in datasets_list["datasets"]:
         dataset_id = dataset["dataset_id"]
