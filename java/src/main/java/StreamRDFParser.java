@@ -22,13 +22,16 @@ public class StreamRDFParser implements Iterator<StreamRDFParser.CustomTriple> {
     private String path;                        //path to the file to be parsed
 
     private IteratorCloseable<Triple> iterator; //stream-based iterator provided by Jena
+    private boolean parseUri;                   //flag that indicates if we have to return URI from the parsing phase for the resources
 
     /**
      * Constructor
      * @param path to the file
+     * @param parseUri flag that indicates if we have to parse URIs
      * @throws IllegalArgumentException if the path provided points to a directory or if it doesn't exist
      */
-    public StreamRDFParser(String path){
+    public StreamRDFParser(String path, boolean parseUri){
+        this.parseUri = parseUri;
         File file = new File(path);
         //check for path
         if(!file.exists())
@@ -61,7 +64,7 @@ public class StreamRDFParser implements Iterator<StreamRDFParser.CustomTriple> {
         //the augmented triple with a type associated to every element of the triple
         Triple triple = iterator.next();
 
-        return new CustomTriple(triple);
+        return new CustomTriple(triple, parseUri);
     }
 
     /**
@@ -87,24 +90,31 @@ public class StreamRDFParser implements Iterator<StreamRDFParser.CustomTriple> {
          * Default Constructor
          *
          * @param triple triple read by Jena stream parser
+         * @param parseUri boolean that indicates if we have to read the URI or the local name of resources
          */
-        public CustomTriple(Triple triple) {
+        public CustomTriple(Triple triple, boolean parseUri) {
             predicate = triple.getPredicate().getLocalName();
 
-            //the subject can only be a resource
             String subjectValue;
-            if(triple.getSubject().isURI())
-                subjectValue = triple.getSubject().getLocalName();
-            else
+            if (triple.getSubject().isURI()){
+                //the subject is a URI ref resource
+                if (parseUri)
+                    subjectValue = triple.getSubject().getURI();
+                else
+                    subjectValue = triple.getSubject().getLocalName();
+            } else {
+                //the subject is blank node
                 subjectValue = triple.getSubject().toString();
+            }
 
             String objectValue;
             if(triple.getObject().isURI()) {
-                String value = triple.getObject().getLocalName();
-                if (value.isBlank())
-                    objectValue = triple.getObject().toString();
+                String value;
+                if (parseUri)
+                    value = triple.getObject().getURI();
                 else
-                    objectValue = value;
+                    value = triple.getObject().getLocalName();
+                objectValue = value;
             } else {
                 String value = triple.getObject().toString(false);
                 if(value.contains("^"))
@@ -167,15 +177,16 @@ public class StreamRDFParser implements Iterator<StreamRDFParser.CustomTriple> {
     //ONLY FOR DEBUG PURPOSE
     public static void main(String[] args){
         //RDFParser parser = new RDFParser("/home/manuel/Tesi/ACORDAR/Test/dataset-50/wappen.rdf");
-        StreamRDFParser parser = new StreamRDFParser("/home/manuel/Tesi/ACORDAR/Datasets/dataset-1/curso-sf-dump.ttl");
+        boolean parseUri = true;
+        StreamRDFParser parser = new StreamRDFParser("/home/manuel/Tesi/ACORDAR/Datasets/dataset-1/curso-sf-dump.ttl", parseUri);
 
         int i = 0;
         while(parser.hasNext()){
             if(i<50){
                 StreamRDFParser.CustomTriple triple = parser.next();
-                System.out.print(triple.getSubject().getValue()+":"+triple.getSubject().getKey()+"     ");
+                System.out.print(triple.getSubject().getValue()+" :"+triple.getSubject().getKey()+"     ");
                 System.out.print(triple.getPredicate()+"     ");
-                System.out.print(triple.getObject().getValue()+":"+triple.getObject().getKey()+"     "+"\n");
+                System.out.print(triple.getObject().getValue()+" :"+triple.getObject().getKey()+"     "+"\n");
                 i++;
             } else {
                 break;

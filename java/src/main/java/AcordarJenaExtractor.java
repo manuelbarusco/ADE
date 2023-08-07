@@ -13,14 +13,16 @@ public class AcordarJenaExtractor {
     private FileWriter logFile;                                 // text file where to log all the errors
 
     private static final int LIMIT_FILE_SIZE = 500;             // Limit size to a file that must be parse
+    private boolean parseUri;                                   //flag that indicates if we have to return URI from the parsing phase for the resources
 
     public static final HashSet<String> SUFFIXES= new HashSet<>(Arrays.asList("rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"));
 
     /** constructor
      * @param datasetsFolderPath path to the datasets folder
      * @param logFilePath path to the log file
+     * @param parseUri flag that indicates if we have to return URI from the parsing phase for the resources
      */
-    public AcordarJenaExtractor(String datasetsFolderPath, String logFilePath) {
+    public AcordarJenaExtractor(String datasetsFolderPath, String logFilePath, boolean parseUri) {
         datasetsFolder = new File(datasetsFolderPath);
         if(!datasetsFolder.isDirectory())
             throw new IllegalArgumentException("The datasets folder path provided is not a directory path");
@@ -32,7 +34,7 @@ public class AcordarJenaExtractor {
             throw new IllegalArgumentException("The error log file path provided points to a directory");
 
         this.logFilePath = logFilePath;
-
+        this.parseUri = parseUri;
     }
 
     /**
@@ -113,7 +115,7 @@ public class AcordarJenaExtractor {
                 //System.out.println(file.getName());
 
                 try {
-                    StreamRDFParser parser = new StreamRDFParser(file.getPath());
+                    StreamRDFParser parser = new StreamRDFParser(file.getPath(), parseUri);
 
                     while (parser.hasNext()) {
                         StreamRDFParser.CustomTriple triple = parser.next();
@@ -150,8 +152,12 @@ public class AcordarJenaExtractor {
 
         }
 
-        //create the dataset_content_jena.json
-        String datasetContentPath = dataset.getPath()+"/dataset_content_jena.json";
+        //create the dataset_content_jena.json or dataset_content_jenaURI.json
+        String datasetContentPath;
+        if (parseUri)
+            datasetContentPath = dataset.getPath()+"/dataset_content_jenaURI.json";
+        else
+            datasetContentPath = dataset.getPath()+"/dataset_content_jena.json";
         FileWriter datasetContent = new FileWriter(datasetContentPath, StandardCharsets.UTF_8);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         gson.toJson(data, datasetContent);
@@ -228,10 +234,18 @@ public class AcordarJenaExtractor {
     }
 
     public static void main(String[] args) throws IOException {
-        String datasetsFolder = "/media/manuel/Tesi/Datasets";
+        String datasetsFolder = "";
+        
+        if(args.length > 0)
+            datasetsFolder = args[0];
+        else
+            datasetsFolder =  "/media/manuel/Tesi/Datasets";
+
         //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
-        String logFilePath = "/home/manuel/Tesi/Codebase/ADE/logs/jena_miner_error_log.txt";
-        AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath);
+        String logFilePath = "logs/jena_miner_error_log.txt";
+
+        boolean parseUri = true;
+        AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath, parseUri);
 
         boolean resume = false;
         e.mineDatasets(resume);
