@@ -1,11 +1,13 @@
 """
 Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined from by JENA 
-or RDFLib because the file was too big
+or RDFLib because were too big
 """
 
 import json
 import os
 import lightrdf
+import argparse
+import logging
 
 SUFFIXES = ["rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"]
 
@@ -159,29 +161,43 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
     del dataset_metadata
 
 
-def main():
+if __name__ == "__main__":
 
     scriptDir = os.path.dirname(os.path.realpath('__file__'))
 
-    datasets_directory_path = "/media/manuel/Tesi/Datasets"                                      #path to the folder of the downloaded datasets
-    #datasets_directory_path = "/home/manuel/Tesi/ACORDAR/Datasets"                                #path to the folder of the downloaded datasets
-    
-    error_log_file_path = os.path.join(scriptDir, 'logs/lightrdf_miner_error_log.txt')            #path to the error log file
-    rdflib_error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner
-    resume = False                                                                                #boolean that indicates if the mining must be resumed from the last results
+    # read the command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "datasets_folder", 
+        type=str, 
+        help="Absolute path to the folder where all the datasets will be downloaded"
+    )
+    parser.add_argument(
+        "--resume", 
+        action="store_true",
+		help="Add if you want to resume the parsing process"
+    )
+    args = parser.parse_args()
+
+    #path to the error log file of the rdflib miner
+    rdflib_error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
+
+    logging.getLogger("rdflib").setLevel(logging.ERROR)
+
+    global log 
+    logging.basicConfig(
+        filename="logs/lightrdf_miner_errors.log",
+        filemode="a",
+        format="%(message)s",
+    )
+    log = logging.getLogger("lightrdf_miner")
 
     #open the error log file of the rdflib miner
     f_log_rdflib=open(rdflib_error_log_file_path, "r")
 
-    #open the error log file of the extractor
-    if resume: 
-        f_log=open(error_log_file_path, "a")
-    else:
-        f_log=open(error_log_file_path, "w")
+    n_dataset = 0
 
     datasets_files_errors = {}
-
-    n_dataset = 0
 
     while True:
         line1 = f_log_rdflib.readline()
@@ -208,12 +224,7 @@ def main():
 
     i = 0 
     for dataset, errors in datasets_files_errors.items():
-        mineDataset(datasets_directory_path, dataset, errors, f_log, resume)
+        mineDataset(args.datasets_folder, dataset, errors, log, args.resume)
         i+=1
         print("Mined: "+str(i)+" datasets over: "+str(n_dataset))
 
-    
-    f_log.close()
-
-if __name__ == "__main__":
-    main() 

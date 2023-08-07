@@ -23,7 +23,7 @@ RDF_SUFFIXES = [".rdf", ".rdfs", ".ttl", ".owl", ".n3", ".nt", ".jsonld", ".xml"
 FILE_LIMIT_SIZE = 100
 
 """
-@param uri, string with the uri
+@param: uri,, string with the uri
 @return last part of the uri, that contains the name
 """
 def getNameFromUri(uri:str) -> str:
@@ -46,7 +46,7 @@ def getLiterals(graph) -> list:
 
     return literals
 
-def getClassesAndEntities(graph) -> dict:
+def getClassesAndEntitiesv2(graph) -> dict:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     SELECT ?s ?hds ?c ?hdc
@@ -86,7 +86,7 @@ def getClassesAndEntities(graph) -> dict:
         
     return classes, entities    
 
-def getProperties(graph) -> list:
+def getPropertiesv2(graph) -> list:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     SELECT DISTINCT ?p ?hdp  
@@ -113,14 +113,90 @@ def getProperties(graph) -> list:
 
     return properties
 
+def getClassesAndEntitiesv1(graph) -> dict:
+    q = """
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT ?s ?ls ?cs ?c ?lc ?cc
+    WHERE {
+        ?s a ?c
+        
+        #retrieve a possible label or comment
+        #for the class or the entity
+        OPTIONAL{
+            ?c rdfs:label ?lc 
+        }
+        OPTIONAL{
+            ?c rdfs:comment ?cc
+        }
+        
+        OPTIONAL{
+            ?s rdfs:label ?ls . 
+        }
+        OPTIONAL{
+            ?s rdfs:comment ?cs
+        }
+    }
+    """
+    match = graph.query(q)
+
+    classes = list()
+    entities = list()
+
+    for item in match:
+        if item[1] is not None:
+            entities.append(item[1])
+        elif item[2] is not None:
+            entities.append(item[2])
+        else:
+            entities.append(item[0])
+
+
+        if item[4] is not None:
+            classes.append(item[4])
+        elif item[5] is not None:
+            classes.append(item[5])
+        else:
+            classes.append(getNameFromUri(item[3]))
+
+
+    return classes, entities    
+
+def getPropertiesv1(graph) -> list:
+    q = """
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT ?p ?l ?c  
+    WHERE { 
+        ?s ?p ?o .
+        OPTIONAL {
+            ?p rdfs:label ?l
+        }
+        OPTIONAL {
+            ?p rdfs:label ?c
+        }
+    }
+    """
+    match = graph.query(q)
+
+    properties = list()
+
+    for item in match:
+        if item[1] is not None:
+            properties.append(item[1])
+        elif item[2] is not None:
+            properties.append(item[2])
+        else:
+            properties.append(getNameFromUri(item[0]))
+
+    return properties
+
 '''
-@param dataset name of the dataset
-@param file object of type DirEntry
-@param dataset_content dictionary with the dataset content already mined
-@param f_log miner error log file
+@param: dataset, name of the dataset
+@param: file, object of type DirEntry
+@param: dataset_content, dictionary with the dataset content already mined
+@param: f_log, miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset:str, file:object, dataset_content:dict, f_log:object) -> bool: 
+def mineFile(dataset:str, file:object, dataset_content:dict, f_log:object, version:int) -> bool: 
     g = Graph()
 
     if (os.path.getsize(file.path) / (1024 ** 2)) < FILE_LIMIT_SIZE: 
@@ -129,9 +205,17 @@ def mineFile(dataset:str, file:object, dataset_content:dict, f_log:object) -> bo
 
             #extract all the info
 
-            classes, entities = getClassesAndEntities(g)
+            classes, entities, properties = None
+
+            if version == 1:
+                classes, entities = getClassesAndEntitiesv1(g)
+                properties = getPropertiesv1(g)
+            
+            if version == 2:
+                classes, entities = getClassesAndEntitiesv2(g)
+                properties = getPropertiesv2(g)
+
             literals = getLiterals(g)
-            properties = getProperties(g)
 
             dataset_content["classes"].extend(classes)
             dataset_content["entities"].extend(entities)
@@ -160,12 +244,12 @@ def mineFile(dataset:str, file:object, dataset_content:dict, f_log:object) -> bo
     return True
 
 '''
-@param dataset object of type DirEntry   
-@param f_log error log file
-@param resume boolean used for resume mechanism
+@param: dataset, object of type DirEntry   
+@param: f_log, error log file
+@param: resume, boolean used for resume mechanism
+@param: version, version of the parsing (1: labels v1, 2: labels v2)
 '''
-def mineDataset(dataset:object, f_log:object, resume:bool):
-
+def mineDataset(dataset:object, f_log:object, resume:bool, version:int):
 
     #open the dataset metadata file
     dataset_metadata_file = open(dataset.path+"/dataset_metadata.json", "r", encoding="utf-8")
@@ -210,7 +294,7 @@ def mineDataset(dataset:object, f_log:object, resume:bool):
     #in the list
     for file_name in files_group.keys():
         for file in files_group[file_name]:
-            if mineFile(dataset.name, file, dataset_content, f_log):
+            if mineFile(dataset.name, file, dataset_content, f_log, version):
                 mined_files.append(file.name) 
                 break
 
@@ -250,6 +334,11 @@ if __name__ == "__main__":
         help="Absolute path to the folder where all the datasets will be downloaded"
     )
     parser.add_argument(
+        "version", 
+        type=int, 
+        help="Version of the parsing (1: labels v1, 2: labels v2)"
+    )
+    parser.add_argument(
         "--resume", 
         action="store_true",
 		help="Add if you want to resume the parsing process"
@@ -269,7 +358,7 @@ if __name__ == "__main__":
     bar = tqdm(total = len(os.listdir(args.datasets_folder)))
     for dataset in os.scandir(args.datasets_folder):
         
-        mineDataset(dataset, args.resume)
+        mineDataset(dataset, args.resume, args.version)
         bar.update(1)
 
 
