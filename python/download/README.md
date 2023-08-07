@@ -1,11 +1,8 @@
 # Download
-<hr>
 
 In this folder you can find all the code for the download phase of the ACORDAR collection. 
 
 The following instructions assume that you are running the code in this directory. 
-
-<hr>
 
 ## Phase 1: Download
 

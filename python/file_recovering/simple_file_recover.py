@@ -1,11 +1,11 @@
 '''
-This script will recover the files that are reported by the dataset_checker in its log file
+This script will recover the files that are reported by the check_datasets.py script in its log file
 In particular it will check the mime type of every reported file and:
 * if the file is an html file it will log it and the extension remain the same
 * if the file is a txt file it will check if it is ttl file by checking the @prefix directive in the first lines
 * if the file is a xml file it will convert it to rdf
 
-In the log file it will log which file have been recovered and which not
+In the log file it will log which files have been recovered and which not
 '''
 
 import os
@@ -42,6 +42,9 @@ def recoverFile(dataset, file, datasets_directory):
     if "xml" in mime_type:
         os.rename(file_path, str(file_path)+".rdf")
         return True
+    elif "html" in mime_type:
+        os.rename(file_path, str(file_path)+".html")
+        return True
     elif "text" in mime_type:
         if checkForTTL(dataset, file, datasets_directory):
             os.rename(file_path, str(file_path)+".ttl")
@@ -76,25 +79,32 @@ def startRecover(datasets_directory,checker_error_log_file_path, error_log_file_
                 dataset = fields[1].strip("\n")
             elif fields[0] == "File":
                 file = fields[1].strip("\n")
-                if os.path.isfile(datasets_directory+"/"+dataset+"/"+file):
-                    if not recoverFile(dataset, file, datasets_directory):
-                        mime_type = magic.from_file(datasets_directory+"/"+dataset+"/"+file)
 
-                        log.warning(
-                            f"""
-                            Dataset: {dataset}\n
-                            File: {file}\n
-                            Mime: {mime_type}\n
-                            """
-                        )
-                    else:
-        
-                        log.warning(
-                            f"""
-                            Recover in Dataset: {dataset}\n
-                            File: {file}\n
-                            """
-                        )
+                split = file.split(".")
+
+                #check if there is no extension available for the file
+
+                if len(split) == 1:
+
+                    if os.path.isfile(datasets_directory+"/"+dataset+"/"+file):
+                        if not recoverFile(dataset, file, datasets_directory):
+                            mime_type = magic.from_file(datasets_directory+"/"+dataset+"/"+file)
+
+                            log.warning(
+                                f"""
+                                Dataset: {dataset}\n
+                                File: {file}\n
+                                Mime: {mime_type}\n
+                                """
+                            )
+                        else:
+            
+                            log.warning(
+                                f"""
+                                Recover in Dataset: {dataset}\n
+                                File: {file}\n
+                                """
+                            )
     
     f_log_checker.close()
     f_log.close()
