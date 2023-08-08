@@ -1,0 +1,2 @@
+Total number of files: 28537
+Total number of NO RDF files: 61

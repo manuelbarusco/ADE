@@ -1,0 +1,58 @@
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of tried links:34283
+Number of success links:28982
+Number of error links:83768211
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of tried links:34283
+Number of success links:28982
+Number of error links:5301
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+Number of tried links:34283
+Number of success links:28982
+Number of error links:5301
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
+
+Number of tried links:34283
+Number of success links:28982
+Number of error links:5301
+Number of datasets: 31589
+Number of full datasets: 26637
+Number of partial datasets: 86
+Number of empty datasets: 4866
+Number of files that need to be assigned to an extension: 110
