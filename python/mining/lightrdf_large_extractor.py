@@ -1,5 +1,6 @@
 """
-Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined by JENA 
+Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined from by JENA 
+or RDFLib because were too big
 """
 
 import json
@@ -20,11 +21,16 @@ def is_literal(node: str) -> bool:
 @param dataset_path path to the dataset folder
 @param dataset name of the dataset
 @param file name of the file that must be mined
+@param file_too_big boolean that indicates if the file is bigger than 4GB
 @param dataset_content dictionary with the dataset content already mined
 @param f_log miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_log: object) -> bool : 
+def mineFile(dataset_path:str, dataset: str, file: str, file_too_big: bool, f_log: object) -> bool : 
+    classes = open(dataset_path+"/classes_lightrdf.txt", "a")
+    entities = open(dataset_path+"/entities_lightrdf.txt", "a")
+    literals = open(dataset_path+"/literals_lightrdf.txt", "a")
+    properties = open(dataset_path+"/properties_lightrdf.txt", "a")
 
     ext = file.split(".")[-1]
 
@@ -35,33 +41,68 @@ def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_
         try: 
 
             doc = lightrdf.RDFDocument(file_path)
-            
-            for triple in doc.search_triples(None, None, None):
-                sub = triple[0]
-                prop = triple[1]
-                obj = triple[2]
 
-                dataset_content["entities"].append(sub)
+            if file_too_big:
+                i = 0 
+        
+                for triple in doc.search_triples(None, None, None):
+                    sub = triple[0]
+                    prop = triple[1]
+                    obj = triple[2]
 
-                if "type" in prop.lower() or "a" == prop.lower():
-                    dataset_content["properties"].append(prop)
-                    dataset_content["classes"].append(obj)
-                    continue
+                    entities.write(sub+"\n")
 
-                dataset_content["properties"].append(prop)
+                    if "type" in prop.lower() or "a" == prop.lower():
+                        classes.write(obj+"\n")
+                        continue
 
-                if is_literal(obj):
-                    dataset_content["literals"].append(obj+"\n")
-                else:
-                    dataset_content["entities"].append(obj+"\n")
+                    properties.write(prop+"\n")
+
+                    if is_literal(obj):
+                        literals.write(obj+"\n")
+                    else:
+                        entities.write(obj+"\n")
+                    
+                    if i > MAX_ROWS:
+                        break
+                    
+                    i += 1 
+            else:
+                for triple in doc.search_triples(None, None, None):
+                    sub = triple[0]
+                    prop = triple[1]
+                    obj = triple[2]
+
+                    entities.write(sub+"\n")
+
+                    if "type" in prop.lower() or "a" == prop.lower():
+                        properties.write(prop+"\n")
+                        classes.write(obj+"\n")
+                        continue
+
+                    properties.write(prop+"\n")
+
+                    if is_literal(obj):
+                        literals.write(obj+"\n")
+                    else:
+                        entities.write(obj+"\n")
 
         except Exception as e :
             error_message = str(e).strip("\n")
             f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+error_message+"\n")
             return False
 
+        entities.close() 
+        classes.close()
+        properties.close()
+        literals.close()   
         return True
     
+
+    entities.close() 
+    classes.close()
+    properties.close()
+    literals.close()
     f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: File not RDF\n")
     return False
 
@@ -99,15 +140,11 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
 
     mined_files = list()
 
-    dataset_content = dict()
-    dataset_content["entities"] = list()
-    dataset_content["literals"] = list()
-    dataset_content["properties"] = list()
-    dataset_content["literals"] = list()
-
     for file in errors:
+
+        file_too_big = checkFileDimension(dataset_path, file)
         
-        if mineFile(dataset_path, dataset, file, dataset_content, f_log):
+        if mineFile(dataset_path, dataset, file, file_too_big, f_log):
             mined_files.append(file) 
 
     #update the dataset_metadata json file with the mining information
@@ -116,18 +153,13 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
 
     json_serial = json.dumps(dataset_metadata, indent=4, ensure_ascii=False)
 
-    #writing the json file of the metaadata
+    #writing the json file of the content
     with open(dataset_path+"/dataset_metadata.json", "w", encoding="utf-8") as dataset_metadata_file:
         dataset_metadata_file.write(json_serial)
-
-    json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
-    #writing the json file of the content
-    with open(dataset_path+"/dataset_content_lightrdf.json", "w", encoding="utf-8") as dataset_content_file:
-        dataset_content_file.write(json_serial)
     
+    dataset_metadata_file.close()
     del json_serial
     del dataset_metadata
-    del dataset_content
 
 
 if __name__ == "__main__":
@@ -149,43 +181,43 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #path to the error log file of the rdflib miner
-    error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
+    rdflib_error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
+
+    logging.getLogger("rdflib").setLevel(logging.ERROR)
 
     global log 
     logging.basicConfig(
-        filename="logs/lightrdf_miner_errors.log",
+        filename="logs/lightrdf_large_miner_errors.log",
         filemode="a",
         format="%(message)s",
     )
     log = logging.getLogger("lightrdf_miner")
 
     #open the error log file of the rdflib miner
-    f_log=open(error_log_file_path, "r")
+    f_log_rdflib=open(rdflib_error_log_file_path, "r")
 
     n_dataset = 0
 
     datasets_files_errors = {}
 
     while True:
-        line1 = f_log.readline()
+        line1 = f_log_rdflib.readline()
     
         if not line1:
             break
 
-        line2 = f_log.readline()
-        line3 = f_log.readline()
+        line2 = f_log_rdflib.readline()
+        line3 = f_log_rdflib.readline()
     
-        if "Bigger" not in line3:
-
+        if "Bigger than" in line3:
             dataset = line1.split(": ")[1].strip("\n")
             file = line2.split(": ")[1].strip("\n")
 
-            if dataset in datasets_files_errors:
-                datasets_files_errors[dataset].append(file)
-            else:
-                datasets_files_errors[dataset] = list() 
-                datasets_files_errors[dataset].append(file)
-                n_dataset += 1
+            if dataset not in datasets_files_errors:
+                datasets_files_errors[dataset] = list()
+                n_dataset += 1 
+            
+            datasets_files_errors[dataset].append(file)
                 
     print("Find: "+str(n_dataset)+" datasets with big files, starts mining ...")
 

@@ -1,0 +1,10 @@
+Total number of parsable files for Jena: 27828
+Total number of not parsable files for Jena: 5303
+Total number of parsable files for RDFLib: 28571
+Total number of not parsable files for RDFLib: 4560
+Total number of full datasets for Jena: 26359
+Total number of partial datasets for Jena: 154
+Total number of empty datasets for Jena: 5076
+Total number of full datasets for RDFLib: 707
+Total number of partial datasets for RDFLib: 65
+Total number of empty datasets for RDFLib: 4354

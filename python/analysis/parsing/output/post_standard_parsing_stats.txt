@@ -87,3 +87,12 @@ Total number of not parsable files: 463
 Total number of full datasets: 26362
 Total number of partial datasets: 100
 Total number of empty datasets: 5127
+
+Total number of parsable files for Jena: 27399
+Increment of parsable files for RDFLib: 674
+Increment of parsable files for LightRDF: 2
+Total number of parsed files: 28075
+Total number of not parsable files: 462
+Total number of full datasets: 26363
+Total number of partial datasets: 100
+Total number of empty datasets: 5126

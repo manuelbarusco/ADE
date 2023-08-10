@@ -1,0 +1,17 @@
+Total number of parsed files by RDFLibHR: 28002
+Number of full datasets: 26361
+Number of partial datasets: 99
+Number of empty datasets: 5129
+Total number of parsed files by RDFLibHR: 28002
+Number of full datasets: 26361
+Number of partial datasets: 99
+Number of empty datasets: 5129
+Total number of parsed files by RDFLibHR: 28002
+Number of full datasets: 26361
+Number of partial datasets: 99
+Number of empty datasets: 5129
+
+Total number of parsed files by RDFLib: 28002
+Number of full datasets: 26361
+Number of partial datasets: 99
+Number of empty datasets: 5129
