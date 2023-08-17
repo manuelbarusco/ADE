@@ -7,6 +7,8 @@ import os
 import lightrdf
 import argparse
 import logging
+import re
+from tqdm import tqdm
 
 SUFFIXES = ["rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"]
 
@@ -41,9 +43,14 @@ def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_
                 prop = triple[1]
                 obj = triple[2]
 
+                #clean subject and property from < > 
+                sub = re.sub("<|>", "", sub)
+                prop = re.sub("<|>", "", prop)
+                
                 dataset_content["entities"].append(sub)
-
+                
                 if "type" in prop.lower() or "a" == prop.lower():
+                    obj = re.sub("<|>", "", obj)
                     dataset_content["properties"].append(prop)
                     dataset_content["classes"].append(obj)
                     continue
@@ -53,16 +60,17 @@ def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_
                 if is_literal(obj):
                     dataset_content["literals"].append(obj+"\n")
                 else:
+                    obj = re.sub("<|>", "", obj)
                     dataset_content["entities"].append(obj+"\n")
 
         except Exception as e :
             error_message = str(e).strip("\n")
-            f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: "+error_message+"\n")
+            log.warning(f"Dataset: {dataset}\nFile: {file}\nError: {error_message}\n")
             return False
 
         return True
     
-    f_log.write("Dataset: "+dataset+"\nFile: "+file+"\nError: File not RDF\n")
+    log.warning(f"Dataset: {dataset}\nFile: {file}\nError: File not RDF\n")
     return False
 
 """
@@ -78,10 +86,9 @@ def checkFileDimension(dataset_path, file):
 @param dataset_directory_path path to the directory where all the datasets are stored   
 @param dataset to be considered (string with the dataset name)
 @param errors list of problem files for jena in the dataset
-@param f_log error log file
 @param resume boolean used for resume mechanism
 '''
-def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log: object, resume: bool):
+def mineDataset(datasets_directory_path: str, dataset: str, errors: list, resume: bool):
 
     dataset_path = datasets_directory_path+"/"+dataset 
 
@@ -91,11 +98,9 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
     dataset_metadata_file.close()
 
     #checking for the resume mechanism
-    if "mined_lightrdf" in dataset_metadata.keys():
-        if dataset_metadata["mined_lightrdf"] and resume:
+    if "mined_lightrdf_not_large" in dataset_metadata.keys():
+        if dataset_metadata["mined_lightrdf_not_large"] and resume:
             return
-
-    print("Mining dataset: "+dataset)
 
     mined_files = list()
 
@@ -103,7 +108,7 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
     dataset_content["entities"] = list()
     dataset_content["literals"] = list()
     dataset_content["properties"] = list()
-    dataset_content["literals"] = list()
+    dataset_content["classes"] = list()
 
     for file in errors:
         
@@ -111,17 +116,16 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, f_log:
             mined_files.append(file) 
 
     #update the dataset_metadata json file with the mining information
-    dataset_metadata["mined_lightrdf"] = True
-    dataset_metadata["mined_files_lightrdf"] = mined_files
-
-    json_serial = json.dumps(dataset_metadata, indent=4, ensure_ascii=False)
+    dataset_metadata["mined_lightrdf_not_large"] = True
+    dataset_metadata["mined_lightrdf_not_large"] = mined_files
 
     #writing the json file of the metaadata
+    json_serial = json.dumps(dataset_metadata, indent=4, ensure_ascii=False)
     with open(dataset_path+"/dataset_metadata.json", "w", encoding="utf-8") as dataset_metadata_file:
         dataset_metadata_file.write(json_serial)
 
+    #writing the json file of the content   
     json_serial = json.dumps(dataset_content, indent=4, ensure_ascii=False)
-    #writing the json file of the content
     with open(dataset_path+"/dataset_content_lightrdf.json", "w", encoding="utf-8") as dataset_content_file:
         dataset_content_file.write(json_serial)
     
@@ -149,7 +153,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #path to the error log file of the rdflib miner
-    error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
+    error_log_file_path = os.path.join(scriptDir, 'logs/jena_miner_error.log')       #path to the error log file of the rdflib miner                                                               
 
     global log 
     logging.basicConfig(
@@ -175,7 +179,7 @@ if __name__ == "__main__":
         line2 = f_log.readline()
         line3 = f_log.readline()
     
-        if "Bigger" not in line3:
+        if "bigger" not in line3:
 
             dataset = line1.split(": ")[1].strip("\n")
             file = line2.split(": ")[1].strip("\n")
@@ -187,13 +191,11 @@ if __name__ == "__main__":
                 datasets_files_errors[dataset].append(file)
                 n_dataset += 1
                 
-    print("Find: "+str(n_dataset)+" datasets with big files, starts mining ...")
+    print("Find: "+str(n_dataset)+" datasets with problem files, starts mining ...")
 
-    print(datasets_files_errors)
+    pbar = tqdm(total = len(datasets_files_errors.keys()))
 
-    i = 0 
     for dataset, errors in datasets_files_errors.items():
-        mineDataset(args.datasets_folder, dataset, errors, log, args.resume)
-        i+=1
-        print("Mined: "+str(i)+" datasets over: "+str(n_dataset))
+        mineDataset(args.datasets_folder, dataset, errors, args.resume)
+        pbar.update(1)
 

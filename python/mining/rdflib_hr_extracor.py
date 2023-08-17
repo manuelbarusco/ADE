@@ -116,24 +116,24 @@ def getPropertiesv2(graph) -> list:
 def getClassesAndEntitiesv1(graph) -> dict:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?s ?ls ?cs ?c ?lc ?cc
+    SELECT ?s ?ls ?ds ?c ?lc ?dc
     WHERE {
         ?s a ?c
         
-        #retrieve a possible label or comment
+        #retrieve a possible label or description
         #for the class or the entity
         OPTIONAL{
             ?c rdfs:label ?lc 
         }
         OPTIONAL{
-            ?c rdfs:comment ?cc
+            ?c rdfs:description ?dc
         }
         
         OPTIONAL{
             ?s rdfs:label ?ls . 
         }
         OPTIONAL{
-            ?s rdfs:comment ?cs
+            ?s rdfs:description ?ds
         }
     }
     """
@@ -164,14 +164,14 @@ def getClassesAndEntitiesv1(graph) -> dict:
 def getPropertiesv1(graph) -> list:
     q = """
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT ?p ?l ?c  
+    SELECT ?p ?l ?d  
     WHERE { 
         ?s ?p ?o .
         OPTIONAL {
             ?p rdfs:label ?l
         }
         OPTIONAL {
-            ?p rdfs:label ?c
+            ?p rdfs:description ?d
         }
     }
     """
