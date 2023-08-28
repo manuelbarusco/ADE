@@ -1,28 +1,33 @@
+package deduplication;
+
 import com.google.gson.*;
+import org.apache.jena.atlas.iterator.IteratorCloseable;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.riot.system.AsyncParser;
 
 import java.io.*;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class AcordarJenaExtractor {
+public class AcordarJenaExtractorDeduplication {
 
     private File datasetsFolder;                                // folder where there are all the datasets
     private String logFilePath;                                 // path to the error log file
-
     private FileWriter logFile;                                 // text file where to log all the errors
-
-    private static final int LIMIT_FILE_SIZE = 500;             // Limit size to a file that must be parse
-    private boolean parseUri;                                   //flag that indicates if we have to return URI from the parsing phase for the resources
+    private static final int LIMIT_FILE_SIZE = 500;             // Limit size to a file that must be parsed
 
     public static final HashSet<String> SUFFIXES= new HashSet<>(Arrays.asList("rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"));
+
+    public static final String CLASSES = "classes";
+    public static final String PROPERTIES = "properties";
+    public static final String LITERALS = "literals";
+    public static final String ENTITIES = "entities";
 
     /** constructor
      * @param datasetsFolderPath path to the datasets folder
      * @param logFilePath path to the log file
-     * @param parseUri flag that indicates if we have to return URI from the parsing phase for the resources
      */
-    public AcordarJenaExtractor(String datasetsFolderPath, String logFilePath, boolean parseUri) {
+    public AcordarJenaExtractorDeduplication(String datasetsFolderPath, String logFilePath) {
         datasetsFolder = new File(datasetsFolderPath);
         if(!datasetsFolder.isDirectory())
             throw new IllegalArgumentException("The datasets folder path provided is not a directory path");
@@ -34,7 +39,6 @@ public class AcordarJenaExtractor {
             throw new IllegalArgumentException("The error log file path provided points to a directory");
 
         this.logFilePath = logFilePath;
-        this.parseUri = parseUri;
     }
 
     /**
@@ -71,7 +75,7 @@ public class AcordarJenaExtractor {
 
         datasetMetadata.addProperty("mined_jena", true);
         datasetMetadata.add("mined_files_jena", minedFilesJSON);
-    
+
         try{
             FileWriter datasetMetadataFile=new FileWriter(path, StandardCharsets.UTF_8);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -90,20 +94,24 @@ public class AcordarJenaExtractor {
     public void mineDataset(File dataset) throws IOException {
         //System.out.println("Mining dataset: "+dataset);
 
+        //lists for information extraction
         HashMap<String, LinkedList<String>> data = new HashMap<>();
-        data.put(StreamRDFParser.CustomTriple.CLASSES, new LinkedList<>());
-        data.put(StreamRDFParser.CustomTriple.ENTITIES, new LinkedList<>());
-        data.put(StreamRDFParser.CustomTriple.LITERALS, new LinkedList<>());
-        data.put(StreamRDFParser.CustomTriple.PROPERTIES, new LinkedList<>());
+        data.put(CLASSES, new LinkedList<>());
+        data.put(ENTITIES, new LinkedList<>());
+        data.put(LITERALS, new LinkedList<>());
+        data.put(PROPERTIES, new LinkedList<>());
 
         //list all the files
         File[] files = dataset.listFiles();
-
         List<String> minedFiles = new LinkedList<String>();
 
-        for(File file: files){
+        //list of all the triples for the deduplication
+        HashSet<Triple> triples = new HashSet<>();
 
-            double fileSize = file.length() / (1024*1024);
+        // ------------------- TRIPLE DEDUPLICATION ------------------------ //
+
+        for(File file: files){
+            double fileSize = (double) file.length() / (1024*1024);
 
             //check if the file is greater than the limit file size in MB
             if (fileSize > LIMIT_FILE_SIZE) {
@@ -115,26 +123,12 @@ public class AcordarJenaExtractor {
                 //System.out.println(file.getName());
 
                 try {
-                    StreamRDFParser parser = new StreamRDFParser(file.getPath(), parseUri);
+                    IteratorCloseable<Triple> iterator = AsyncParser.asyncParseTriples(file.getPath());
 
-                    while (parser.hasNext()) {
-                        StreamRDFParser.CustomTriple triple = parser.next();
+                    while (iterator.hasNext())
+                        triples.add(iterator.next());
 
-                        String subjectValue = triple.getSubject().getValue();
-                        String objectValue = triple.getObject().getValue();
-
-                        data.get(StreamRDFParser.CustomTriple.PROPERTIES).add(triple.getPredicate());
-
-                        //check for non-empty values in subject or object values
-                        if(!subjectValue.isBlank())
-                            data.get(triple.getSubject().getKey()).add(subjectValue);
-
-                        if(!objectValue.isBlank())
-                            data.get(triple.getObject().getKey()).add(objectValue);
-
-                    }
-
-                    parser.close();
+                    iterator.close();
                     minedFiles.add(file.getName());
 
                 } catch (Exception e) {
@@ -149,15 +143,52 @@ public class AcordarJenaExtractor {
                     logFile.flush();
                 }
             }
-
         }
 
+        // --------------------------------------------------------
+
+        //read the deduplicated triples and assign subject, predicate and object to the lists
+        Iterator<Triple> iterator = triples.iterator();
+        while (iterator.hasNext()) {
+            Triple triple = iterator.next();
+            try {
+                String predicate = triple.getPredicate().getLocalName();
+
+                data.get(PROPERTIES).add(predicate);
+
+                if (triple.getSubject().isURI())
+                    data.get(ENTITIES).add(triple.getSubject().getURI());
+
+                if (triple.getObject().isURI()) {
+                    if (predicate.equals("type")) {
+                        String value = "";
+                        if (triple.getObject().isURI())
+                            value = triple.getObject().getURI();
+                        else
+                            value = triple.getObject().toString();
+                        data.get(CLASSES).add(value);
+                    } else {
+                        data.get(ENTITIES).add(triple.getObject().getURI());
+                    }
+                } else if (triple.getObject().isLiteral()) {
+                    String value = triple.getObject().toString(false);
+                    if (value.contains("^"))
+                        value = value.split("\\^")[0];
+                    else if (value.contains("@"))
+                        value = value.split("@")[0];
+                    data.get(LITERALS).add(value);
+                }
+
+                iterator.remove();
+            } catch (Exception e) {
+                System.out.println(e);
+                System.out.println(dataset.getName());
+            }
+        }
+
+
         //create the dataset_content_jena.json or dataset_content_jenaURI.json
-        String datasetContentPath;
-        if (parseUri)
-            datasetContentPath = dataset.getPath()+"/dataset_content_jenaURI.json";
-        else
-            datasetContentPath = dataset.getPath()+"/dataset_content_jena.json";
+        String datasetContentPath = dataset.getPath()+"/dataset_content_jena_deduplication.json";
         FileWriter datasetContent = new FileWriter(datasetContentPath, StandardCharsets.UTF_8);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         gson.toJson(data, datasetContent);
@@ -235,17 +266,17 @@ public class AcordarJenaExtractor {
 
     public static void main(String[] args) throws IOException {
         String datasetsFolder = "";
-        
+
+        //itialize the datasets folder path
         if(args.length > 0)
             datasetsFolder = args[0];
         else
             datasetsFolder =  "/media/manuel/Tesi/Datasets";
 
-        //String datasetsFolder = "/home/manuel/Tesi/ACORDAR/Datasets";
-        String logFilePath = "src/main/java/logs/jena_miner_error_log.log";
+        String logFilePath = "src/main/java/deduplication/logs/jena_miner_error_log_deduplication.log";
 
         boolean parseUri = true;
-        AcordarJenaExtractor e = new AcordarJenaExtractor(datasetsFolder, logFilePath, parseUri);
+        AcordarJenaExtractorDeduplication e = new AcordarJenaExtractorDeduplication(datasetsFolder, logFilePath);
 
         boolean resume = false;
         e.mineDatasets(resume);
