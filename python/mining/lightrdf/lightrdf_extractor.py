@@ -1,5 +1,6 @@
 """
 Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes that are not mined by JENA 
+(Stream parser without deduplication)
 """
 
 import json
@@ -12,8 +13,10 @@ from tqdm import tqdm
 
 SUFFIXES = ["rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"]
 
-MAX_ROWS = 300000
-
+'''
+@param: node, string representation of a RDF graph node
+@return True if the node is a string else False
+'''
 def is_literal(node: str) -> bool:
     return node.startswith('"') and node.endswith('"')
 
@@ -23,10 +26,9 @@ def is_literal(node: str) -> bool:
 @param dataset name of the dataset
 @param file name of the file that must be mined
 @param dataset_content dictionary with the dataset content already mined
-@param f_log miner error log file
 @return True if the file is mined, else False
 '''
-def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_log: object) -> bool : 
+def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict) -> bool : 
 
     ext = file.split(".")[-1]
 
@@ -72,15 +74,6 @@ def mineFile(dataset_path:str, dataset: str, file: str,dataset_content: dict, f_
     
     log.warning(f"Dataset: {dataset}\nFile: {file}\nError: File not RDF\n")
     return False
-
-"""
-@param dataset_path path to the dataset folder
-@param file name of the file that must be mined
-@return True if the file is too big (bigger than 4 GB), else false
-"""
-def checkFileDimension(dataset_path, file):
-    file_path = dataset_path+"/"+file
-    return (os.path.getsize(file_path) / (1024 ** 3)) > 4
 
 '''
 @param dataset_directory_path path to the directory where all the datasets are stored   

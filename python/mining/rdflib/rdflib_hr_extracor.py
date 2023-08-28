@@ -1,7 +1,7 @@
 """
 Extracts the ACORDAR baseline needed data from all the datasets files with valid suffixes
 The purpose of this extractor is to extract a human readable version of the triples elements
-by using the rdfs:label and rdfs:comment properties
+by using the rdfs:label, rdfs:comment properties and other related properties
 """
 
 import pathlib
