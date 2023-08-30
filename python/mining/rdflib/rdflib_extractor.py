@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
     global log 
     logging.basicConfig(
-        filename="logs/rdflib_miner_errors.log",
+        filename="../logs/rdflib_miner_errors.log",
         filemode="a",
         format="%(message)s",
     )

@@ -26,9 +26,10 @@ def is_literal(node: str) -> bool:
 @param: dataset_path, path to the dataset folder
 @param: file, path to the RDF file
 @param: triples, set of triples
+@param: map_uri_label, mapping from URI to label
 @return True if the file is mined, else False
 '''
-def tripleDeduplication(dataset_path:str, file: str, triples:set)->bool:
+def tripleDeduplication(dataset_path:str, file: str, triples:set, map_uri_label:dict)->bool:
 
     ext = file.split(".")[-1]
 
@@ -43,6 +44,19 @@ def tripleDeduplication(dataset_path:str, file: str, triples:set)->bool:
             #triple deduplication
             for triple in doc.search_triples(None, None, None):
                 triples.add(triple)
+
+                #retrieve labels
+                sub = triple[0]
+                prop = triple[1]
+                obj = triple[2]
+
+                #clean subject and property from < > 
+                sub = re.sub("<|>", "", sub)
+                prop = re.sub("<|>", "", prop)
+
+                #save the labels
+                if "label" in prop.lower() and is_literal(obj):
+                    map_uri_label[sub] = obj; 
         
         except Exception as e :
             error_message = str(e).strip("\n")
@@ -86,12 +100,14 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, resume
     #save all the triples in a set for doing triple deduplication
     triples = set()
 
+    #map uri->lable
+    map_uri_label = dict()
+
     for file in errors:
 
-        if tripleDeduplication(dataset_path, file, triples): 
+        if tripleDeduplication(dataset_path, file, triples, map_uri_label): 
             mined_files.append(file) 
     
-
     #read the deduplicated triples
     for triple in triples:
         sub = triple[0]
@@ -102,12 +118,17 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, resume
         sub = re.sub("<|>", "", sub)
         prop = re.sub("<|>", "", prop)
         
-        dataset_content["entities"].append(sub)
+        #retrieve the possible label for the subject
+        subject_label = map_uri_label.get(sub, sub)
+        dataset_content["entities"].append(subject_label)
+
+        #retrieve the possible label for the object
+        object_label = map_uri_label.get(obj, obj)
         
         if "type" in prop.lower() or "a" == prop.lower():
             obj = re.sub("<|>", "", obj)
             dataset_content["properties"].append(prop)
-            dataset_content["classes"].append(obj)
+            dataset_content["classes"].append(object_label)
             continue
 
         dataset_content["properties"].append(prop)
@@ -116,7 +137,7 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, resume
             dataset_content["literals"].append(obj+"\n")
         else:
             obj = re.sub("<|>", "", obj)
-            dataset_content["entities"].append(obj+"\n")
+            dataset_content["entities"].append(object_label+"\n")
 
 
     #update the dataset_metadata json file with the mining information

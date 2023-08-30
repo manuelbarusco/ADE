@@ -1,6 +1,0 @@
-Number of recovered files: 136
-Number of unrecovered files: 220
-Number of recovered files: 207
-Number of unrecovered files: 382
-Number of recovered files: 207
-Number of unrecovered files: 382

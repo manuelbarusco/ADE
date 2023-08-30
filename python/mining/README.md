@@ -1,9 +1,10 @@
 # Collection Mining
 
-In this folder you can find all the code for the ACORDAR collection mining. The mining phase will extract for all the datasets the entities, literals, properties and classes present in the dataset files by using different possible types of file parsing. In my experiments I tried three types of parsing: 
+In this folder you can find all the code for the ACORDAR collection mining. The mining phase will extract for every dataset the entities, literals, properties and classes present in the dataset files by using different possible types of file parsing. In my experiments I tried three types of parsing: 
 * standard parsing
 * label parsing v1
 * label parsing v2
+* stream parsing
 
 by using every time a different combination of parsers. 
 

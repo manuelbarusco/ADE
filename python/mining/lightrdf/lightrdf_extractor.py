@@ -110,7 +110,7 @@ def mineDataset(datasets_directory_path: str, dataset: str, errors: list, resume
 
     #update the dataset_metadata json file with the mining information
     dataset_metadata["mined_lightrdf_not_large"] = True
-    dataset_metadata["mined_lightrdf_not_large"] = mined_files
+    dataset_metadata["mined_lightrdf_not_large_files"] = mined_files
 
     #writing the json file of the metaadata
     json_serial = json.dumps(dataset_metadata, indent=4, ensure_ascii=False)
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     global log 
     logging.basicConfig(
-        filename="logs/lightrdf_miner_errors.log",
+        filename="../logs/lightrdf_miner_errors.log",
         filemode="a",
         format="%(message)s",
     )
