@@ -183,13 +183,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #path to the error log file of the rdflib miner
-    rdflib_error_log_file_path = os.path.join(scriptDir, 'logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
+    rdflib_error_log_file_path = os.path.join(scriptDir, '../logs/rdflib_miner_error_log.txt')       #path to the error log file of the rdflib miner                                                               
 
     logging.getLogger("rdflib").setLevel(logging.ERROR)
 
     global log 
     logging.basicConfig(
-        filename="logs/lightrdf_large_miner_errors.log",
+        filename="../logs/lightrdf_large_miner_errors.log",
         filemode="a",
         format="%(message)s",
     )

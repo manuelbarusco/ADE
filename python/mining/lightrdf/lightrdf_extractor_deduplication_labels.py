@@ -178,7 +178,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #path to the error log file of Jena Deduplication miner
-    error_log_file_path = os.path.join(scriptDir, '../../../java/src/main/java/deduplication/logs/jena_miner_error_log_deduplication.log')                                     
+    error_log_file_path = os.path.join(scriptDir, '../../../java/src/main/java/deduplication/logs/jena_miner_error_log_deduplication_labels.log')                                     
 
     global log 
     logging.basicConfig(

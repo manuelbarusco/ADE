@@ -16,11 +16,11 @@ python3 downloader.py ACORDAR/Data/datasets.json path_datasets_folder --start-fr
 </code>
 </br>
 </br>
-In the indicated datasets folder the script will create a folder for every dataset, where it will put all the dataset files and the <code>dataset_metadata.json</code> file:
+In the indicated datasets folder the script will create a folder for every dataset, where it will put all the dataset files and the <code>dataset_metadata.json</code> file.
 <br>
 <br>
 
-<b> Datasets directories structure; </b>
+<b> Datasets directories structure: </b>
 
 ```
 datasets
@@ -79,7 +79,3 @@ All the errors returned by the <code>download_retry.py</code> script will be log
 The <code>check_datasets.py</code> script will clean up the downloaded file names from the URL noise and it will log in the <code>/logs/check_datasets.log</code> file for every dataset which files have not a valid RDF extension. The only required command line argument is the path to the datasets folder. 
 
 <code>python3 check_datasets.py path_datasets_folder</code>
-
-## Extra: Log Analysis
-
-The <code>log_analysis.ipynb</code> notebook contains the code for the analysis of the HTTP error codes and messages returned by the <code>downloader.py</code> script. 

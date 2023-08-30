@@ -201,7 +201,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #path to the error log file of the jena miner
-    jena_error_log_file_path = os.path.join(scriptDir, '../../java/src/main/java/logs/jena_miner_error_log.txt')                                                                   
+    jena_error_log_file_path = os.path.join(scriptDir, '../../../java/src/main/java/logs/jena_miner_error_log.txt')                                                                   
 
     logging.getLogger("rdflib").setLevel(logging.ERROR)
 

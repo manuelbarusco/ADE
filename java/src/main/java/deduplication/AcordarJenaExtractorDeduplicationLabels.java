@@ -134,13 +134,13 @@ public class AcordarJenaExtractorDeduplicationLabels {
 
                         String predicate = triple.getPredicate().getLocalName();
 
-                        if(predicate.contains("label")){
+                        if(predicate.contains("label") && triple.getObject().isLiteral()){
                             String label = triple.getObject().toString(false);
                             if (label.contains("^"))
                                 label = label.split("\\^")[0];
                             else if (label.contains("@"))
                                 label = label.split("@")[0];
-                            uriLabelMap.put(triple.getSubject().toString(), label);
+                            uriLabelMap.put(triple.getSubject().getURI(), label);
                         }
                     }
 
@@ -168,19 +168,21 @@ public class AcordarJenaExtractorDeduplicationLabels {
         while (iterator.hasNext()) {
             Triple triple = iterator.next();
             try {
-                String predicate = triple.getPredicate().getLocalName();
 
-                data.get(PROPERTIES).add(predicate);
-
-                String subjectValue = uriLabelMap.getOrDefault(triple.getSubject().toString(), triple.getSubject().toString());
-                String objectValue = uriLabelMap.getOrDefault(triple.getObject().toString(), triple.getObject().toString());
+                data.get(PROPERTIES).add(uriLabelMap.getOrDefault(triple.getPredicate().getURI(), triple.getPredicate().getLocalName()));
 
                 if (triple.getSubject().isURI())
-                    data.get(ENTITIES).add(subjectValue);
+                    data.get(ENTITIES).add(uriLabelMap.getOrDefault(triple.getSubject().getURI(), triple.getSubject().getURI()));
+
+                String predicate = triple.getPredicate().getLocalName();
 
                 if (triple.getObject().isURI()) {
-                    if (predicate.equals("type"))
-                        data.get(CLASSES).add(objectValue);
+                    if (predicate.equals("type")) {
+                        String value = uriLabelMap.getOrDefault(triple.getObject().getURI(), triple.getObject().getURI());
+                        data.get(CLASSES).add(value);
+                    } else {
+                        data.get(ENTITIES).add(triple.getObject().getURI());
+                    }
                 } else if (triple.getObject().isLiteral()) {
                     String value = triple.getObject().toString(false);
                     if (value.contains("^"))
@@ -199,7 +201,7 @@ public class AcordarJenaExtractorDeduplicationLabels {
 
 
         //create the dataset_content_jena.json or dataset_content_jenaURI.json
-        String datasetContentPath = dataset.getPath()+"/dataset_content_jena_deduplication.json";
+        String datasetContentPath = dataset.getPath()+"/dataset_content_jena_deduplication_labels.json";
         FileWriter datasetContent = new FileWriter(datasetContentPath, StandardCharsets.UTF_8);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         gson.toJson(data, datasetContent);
@@ -283,8 +285,9 @@ public class AcordarJenaExtractorDeduplicationLabels {
             datasetsFolder = args[0];
         else
             datasetsFolder =  "/media/manuel/Tesi/Datasets";
+            //datasetsFolder =  "/home/manuel/Tesi/ACORDAR/Datasets";
 
-        String logFilePath = "src/main/java/deduplication/logs/jena_miner_error_log_deduplication.log";
+        String logFilePath = "src/main/java/deduplication/logs/jena_miner_error_log_deduplication_labels.log";
 
         boolean parseUri = true;
         AcordarJenaExtractorDeduplicationLabels e = new AcordarJenaExtractorDeduplicationLabels(datasetsFolder, logFilePath);
