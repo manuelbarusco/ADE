@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 SUFFIXES = ["rdf", "rdfs", "ttl", "owl", "n3", "nt", "jsonld", "xml", "ntriples", "nq", "trig", "trix"]
 
-MAX_ROWS = 300000
+MAX_TRIPLES = 300000
 
 '''
 @param: node, string representation of a RDF graph node
@@ -37,12 +37,24 @@ def tripleDeduplication(dataset_path:str, file: str, triples:set, map_uri_label:
 
         file_path = dataset_path+"/"+file
 
+        #check the file size
+        size = os.path.getsize(file_path) / (1024*1024)
+
+        is_big = False
+        if size > 500:
+            is_big = True
+
         try: 
 
             doc = lightrdf.RDFDocument(file_path)
 
+            triple_count = 0 
+
             #triple deduplication
             for triple in doc.search_triples(None, None, None):
+                if is_big and triple_count > MAX_TRIPLES: 
+                    break
+
                 triples.add(triple)
 
                 #retrieve labels
@@ -55,8 +67,10 @@ def tripleDeduplication(dataset_path:str, file: str, triples:set, map_uri_label:
                 prop = re.sub("<|>", "", prop)
 
                 #save the labels
-                if "label" in prop.lower() and is_literal(obj):
+                if "label" in prop.lower() or "name" in prop.lower() and is_literal(obj):
                     map_uri_label[sub] = obj; 
+
+                triple_count += 1
         
         except Exception as e :
             error_message = str(e).strip("\n")
@@ -203,18 +217,15 @@ if __name__ == "__main__":
 
         line2 = f_log.readline()
         line3 = f_log.readline()
-    
-        if "bigger" not in line3:
 
-            dataset = line1.split(": ")[1].strip("\n")
-            file = line2.split(": ")[1].strip("\n")
+        dataset = line1.split(": ")[1].strip("\n")
+        file = line2.split(": ")[1].strip("\n")
 
-            if dataset in datasets_files_errors:
-                datasets_files_errors[dataset].append(file)
-            else:
-                datasets_files_errors[dataset] = list() 
-                datasets_files_errors[dataset].append(file)
-                n_dataset += 1
+        if dataset not in datasets_files_errors.keys():
+            datasets_files_errors[dataset] = list() 
+            n_dataset += 1
+
+        datasets_files_errors[dataset].append(file)
                 
     print("Find: "+str(n_dataset)+" datasets with problem files, starts mining ...")
 
@@ -223,4 +234,3 @@ if __name__ == "__main__":
     for dataset, errors in datasets_files_errors.items():
         mineDataset(args.datasets_folder, dataset, errors, args.resume)
         pbar.update(1)
-

@@ -57,12 +57,14 @@ def getClassesAndEntitiesv2(graph) -> dict:
         
         OPTIONAL { 
             ?s ?p ?hds .
-            FILTER(REGEX(str(?p), "(name|description|comment|label|title)", "i"))
+            FILTER isLiteral(?hds) .
+            FILTER(REGEX(str(?p), "(name|description|label|title)", "i"))
         }
         
         OPTIONAL {
             ?c ?pc ?hdc .
-            FILTER(REGEX(str(?pc), "(name|description|comment|label|title)", "i"))
+            FILTER isLiteral(?hdc) .
+            FILTER(REGEX(str(?pc), "(name|description|label|title)", "i"))
         }
     }
     """
@@ -95,7 +97,8 @@ def getPropertiesv2(graph) -> list:
         
         OPTIONAL {
             ?p ?lp ?hdp .
-            FILTER(REGEX(str(?lp), "(name|description|comment|label|title)", "i"))
+            FILTER isLiteral(?hdp) .
+            FILTER(REGEX(str(?lp), "(name|description|label|title)", "i"))
         }
             
     }

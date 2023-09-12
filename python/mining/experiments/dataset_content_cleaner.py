@@ -19,9 +19,11 @@ def clean_dataset_content(dataset_content_rdflibhr_path:str, dataset_content_rdf
     dataset_content_rdflibhr_clean = {
         "entities" : list(),  
         "literals" : list(), 
+        "classes" : list(),
+        "properties" : list()
     }
 
-    fields = ["entities", "literals"]
+    fields = ["entities", "literals", "properties", "classes"]
 
     #clean the fields
     for field in fields:
